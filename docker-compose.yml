@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+  postgresql:
+    image: postgres:9.6-alpine
+    environment:
+      - POSTGRES_PASSWORD=md53175bce1d3201d16594cebf9d7eb3f9d
+    volumes:
+      - "hivems_dbdata:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+#
+#  pgadmin:
+#    image: dpage/pgadmin4:5.0
+#    environment:
+#      - PGADMIN_DEFAULT_EMAIL=sa@broadsoftware.com
+#      - PGADMIN_DEFAULT_PASSWORD=admin
+#    ports:
+#      - "8081:80"
+#    volumes:
+#      - "pgadmin_data:/var/lib/pgadmin"
+
+  minio:
+    image: minio/minio
+    environment:
+      - MINIO_ACCESS_KEY=accesskey
+      - MINIO_SECRET_KEY=secretkey
+    volumes:
+      - minio_data:/data
+    ports:
+      - 9000:9000
+    command: server /data
+
+  metastore:
+    image: hive-metastore
+    ports:
+      - 9083:9083
+
+  gha2minio:
+    image: gha2/gha2minio:latest
+    environment:
+      - SERVER=minio:9000
+      - UNSECURE=yes
+      - ACCESS_KEY=accesskey
+      - SECRET_KEY=secretkey
+      - WAIT_SECONDS=120
+      - MAX_DOWNLOAD=2
+      - BACK_DAYS=0
+    volumes:
+      - gha2minio_data:/data
+
+volumes:
+  hivems_dbdata:
+  minio_data:
+  pgadmin_data:
+  gha2minio_data:
+
+
+
