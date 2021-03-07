@@ -43,9 +43,9 @@ services:
       - UNSECURE=yes
       - ACCESS_KEY=accesskey
       - SECRET_KEY=secretkey
-      - WAIT_SECONDS=120
-      - MAX_DOWNLOAD=2
-      - BACK_DAYS=0
+      - WAIT_SECONDS=300
+      - MAX_DOWNLOADS=5
+      - BACK_DAYS=1
     volumes:
       - gha2minio_data:/data
 
