@@ -19,19 +19,28 @@ rm -rf hadoop-3.2.0/
 
 ./json2parquet.sh xxx s3a://gha2minio-2021/2021/03/07/00.json.gz
 
+./submit.sh Json2parquet s3a://spark/table1 s3a://gha2minio-2021/2021/03/07/05.json.gz s3a://gha2minio-2021/2021/03/07/06.json.gz
+./submit.sh Show s3a://spark/table1
 
-
+./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-01 s3a://gha2minio-2021/2021/03/07/01.json.gz
+./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-02 s3a://gha2minio-2021/2021/03/07/02.json.gz
 
 
 
 # Links
 
 https://arnon.me/2015/08/spark-parquet-s3/
+
 https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html
+
 https://www.datamechanics.co/blog-post/setting-up-managing-monitoring-spark-on-kubernetes
+
 https://medium.com/@adamrempter/running-spark-3-with-standalone-hive-metastore-3-0-b7dfa733de91
+
 https://medium.com/@binfan_alluxio/running-presto-with-hive-metastore-on-a-laptop-in-10-minutes-72823f1ebf01
+
 https://www.philipphoffmann.de/post/spark-shell-s3a-support/
+
 https://www.margo-group.com/fr/actualite/tutoriel-delta-lake-premiere-prise-en-main/
-https://www.margo-group.com/fr/actualite/tutoriel-delta-lake-premiere-prise-en-main/
+
 
