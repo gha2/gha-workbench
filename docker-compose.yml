@@ -43,7 +43,7 @@ services:
       - UNSECURE=yes
       - ACCESS_KEY=accesskey
       - SECRET_KEY=secretkey
-      - WAIT_SECONDS=300
+      - WAIT_SECONDS=30
       - MAX_DOWNLOADS=5
       - BACK_DAYS=1
     volumes:

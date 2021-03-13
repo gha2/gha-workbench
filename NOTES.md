@@ -25,6 +25,8 @@ rm -rf hadoop-3.2.0/
 ./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-01 s3a://gha2minio-2021/2021/03/07/01.json.gz
 ./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-02 s3a://gha2minio-2021/2021/03/07/02.json.gz
 
+./submit.sh Json2Parquet --backDays 2 --maxFiles 2
+./submit.sh Show s3a://gha/raw
 
 
 # Links

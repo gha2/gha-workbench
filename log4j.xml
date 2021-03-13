@@ -15,8 +15,10 @@
 	<logger name="org.sparkproject.jetty.server"><level value="warn"/></logger>
 	<logger name="org.apache.parquet"><level value="warn"/></logger>
 	<logger name="org.apache.hadoop"><level value="warn"/></logger>
-	<logger name="gha2spark"><level value="debug"/></logger>
+	<!-- To display bound ports -->
+	<logger name="org.apache.spark.util.Utils"><level value="info"/></logger>
 
+	<logger name="gha2spark"><level value="debug"/></logger>
     <root>
         <level value="info" />
     	<appender-ref ref="STDOUT" />
