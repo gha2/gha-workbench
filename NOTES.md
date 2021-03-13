@@ -4,7 +4,8 @@ tar xvzf spark-3.1.1-bin-hadoop3.2.tgz
 mv spark-3.1.1-bin-hadoop3.2 spark-3.1.1
 mv spark-3.1.1-bin-hadoop3.2.tgz archives/
 
-# Hadoop version is defined by looking on spark-3.1.1/jars/hadoop*/jar
+Hadoop version is defined by looking on spark-3.1.1/jars/hadoop*/jar
+
 wget https://archive.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
 tar xvzf hadoop-3.2.0.tar.gz
 mv hadoop-3.2.0.tar.gz archives/
@@ -17,16 +18,20 @@ rm -rf hadoop-3.2.0/
 
 # test
 
-./json2parquet.sh xxx s3a://gha2minio-2021/2021/03/07/00.json.gz
-
-./submit.sh Json2parquet s3a://spark/table1 s3a://gha2minio-2021/2021/03/07/05.json.gz s3a://gha2minio-2021/2021/03/07/06.json.gz
-./submit.sh Show s3a://spark/table1
-
-./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-01 s3a://gha2minio-2021/2021/03/07/01.json.gz
-./submit.sh Json2parquet s3a://spark/table3/src=gha2minio-2021-03-07-02 s3a://gha2minio-2021/2021/03/07/02.json.gz
 
 ./submit.sh Json2Parquet --backDays 2 --maxFiles 2
 ./submit.sh Show s3a://gha/raw
+
+./submit.sh Json2Parquet --backDays 2 --maxFiles 1 --waitSeconds 30 --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey
+
+./submit.sh CreateTable --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey --database gha2 --srcPath s3a://gha/raw --table t2 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+
+scala> spark.sql("REFRESH TABLE gha2.t2")
+
+scala> spark.sql("SELECT * from gha2.t2 LIMIT 20").show()
+scala> spark.sql("SELECT type, count(*) AS cnt  from gha2.t2 GROUP BY type ORDER BY cnt DESC").show()
+
+scala> spark.sql("SELECT DISTINCT type, action FROM gha2.t2 ORDER BY type").show()
 
 
 # Links
