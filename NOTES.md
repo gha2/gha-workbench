@@ -22,16 +22,16 @@ rm -rf hadoop-3.2.0/
 ./submit.sh Json2Parquet --backDays 2 --maxFiles 2
 ./submit.sh Show s3a://gha/raw
 
-./submit.sh Json2Parquet --backDays 2 --maxFiles 1 --waitSeconds 30 --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey
+./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 30 --srcBucketFormat gharaw --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey
 
-./submit.sh CreateTable --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey --database gha2 --srcPath s3a://gha/raw --table t2 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+./submit.sh CreateTable --s3Endpoint "http://localhost:9000" --s3AccessKey accesskey --s3SecretKey secretkey --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 scala> spark.sql("REFRESH TABLE gha2.t2")
 
-scala> spark.sql("SELECT * from gha2.t2 LIMIT 20").show()
+scala> spark.sql("SELECT * from gha.t1 ORDER BY actor LIMIT 20").show()
 scala> spark.sql("SELECT type, count(*) AS cnt  from gha2.t2 GROUP BY type ORDER BY cnt DESC").show()
 
-scala> spark.sql("SELECT DISTINCT type, action FROM gha2.t2 ORDER BY type").show()
+scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 
 # Links
