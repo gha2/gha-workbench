@@ -18,7 +18,7 @@
 	<!-- To display bound ports -->
 	<logger name="org.apache.spark.util.Utils"><level value="info"/></logger>
 
-	<logger name="gha2spark"><level value="debug"/></logger>
+	<logger name="gha2spark"><level value="info"/></logger>
     <root>
         <level value="info" />
     	<appender-ref ref="STDOUT" />
