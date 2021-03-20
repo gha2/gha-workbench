@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+
+  metastore:
+    image: registry.gitlab.com/gha1/hive-metastore
+    user: hive
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - HIVEMS_PASSWORD=hivems
+      - HIVEMS_ENCRYPTED_PASSWORD=md54507e4128ef7e8b157fa8aeb399035f0
+      - POSTGRES_HOST=tcp1.shared1
+      - POSTGRES_PORT=15432
+      - S3_ENDPOINT=https://minio1.shared1
+      - S3_ACCESS_KEY=accesskey
+      - S3_SECRET_KEY=secretkey
+      - LOG_LEVEL=INFO
+    ports:
+      - 9083:9083
+
