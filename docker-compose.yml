@@ -9,17 +9,7 @@ services:
       - "hivems_dbdata:/var/lib/postgresql/data"
     ports:
       - "5432:5432"
-#
-#  pgadmin:
-#    image: dpage/pgadmin4:5.0
-#    environment:
-#      - PGADMIN_DEFAULT_EMAIL=sa@broadsoftware.com
-#      - PGADMIN_DEFAULT_PASSWORD=admin
-#    ports:
-#      - "8081:80"
-#    volumes:
-#      - "pgadmin_data:/var/lib/pgadmin"
-#
+
   minio:
     image: minio/minio
     environment:
@@ -63,7 +53,6 @@ services:
 volumes:
   hivems_dbdata:
   minio_data:
-  pgadmin_data:
   gha2minio_data:
 
 

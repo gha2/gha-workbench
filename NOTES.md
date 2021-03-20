@@ -37,7 +37,7 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 ./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1 --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123
 
-./submit.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+./submit.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 # Links
 

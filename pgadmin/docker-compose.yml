@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+
+  pgadmin:
+    image: dpage/pgadmin4:5.0
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=sa@broadsoftware.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "8081:80"
+    volumes:
+      - "pgadmin_data:/var/lib/pgadmin"
+
+
+volumes:
+  pgadmin_data:
+
+
+
