@@ -39,6 +39,17 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 ./submit.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
+As S3 connection parameters are now in spark-submit:
+
+./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1
+
+./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t2 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+
+# Image building
+
+./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
+./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest push
+
 # Links
 
 https://arnon.me/2015/08/spark-parquet-s3/
@@ -56,4 +67,5 @@ https://www.philipphoffmann.de/post/spark-shell-s3a-support/
 https://www.margo-group.com/fr/actualite/tutoriel-delta-lake-premiere-prise-en-main/
 
 https://stackoverflow.com/questions/61301704/how-to-run-apache-spark-with-s3-minio-secured-with-self-signed-certificate
+
 
