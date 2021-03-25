@@ -68,4 +68,5 @@ https://www.margo-group.com/fr/actualite/tutoriel-delta-lake-premiere-prise-en-m
 
 https://stackoverflow.com/questions/61301704/how-to-run-apache-spark-with-s3-minio-secured-with-self-signed-certificate
 
+https://engineering.linkedin.com/blog/2020/open-sourcing-kube2hadoop
 
