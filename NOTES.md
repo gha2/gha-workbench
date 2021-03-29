@@ -35,20 +35,31 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 ## On kspray1
 
-./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1 --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123
+./submit-local.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1 --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123
 
-./submit.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+./submit-local.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 As S3 connection parameters are now in spark-submit:
 
 ./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1
 
-./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t2 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+As daemon:
+./submit.sh Json2Parquet --backDays 0 --maxFiles 2 --waitSeconds 30 --srcBucketFormat gharaw1
+
+Todo:
+https://stackoverflow.com/questions/37200388/how-to-exit-spark-submit-after-the-submission
+
+
+./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 # Image building
 
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest push
+
+# Pbs
+
+2021-03-28-05: This file hang when handled on K8S (Works when handled locally)
 
 # Links
 
