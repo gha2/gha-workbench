@@ -14,7 +14,9 @@ cp ./hadoop-3.2.0/share/hadoop/tools/lib/aws-java-sdk-bundle-1.11.375.jar spark-
 # Not needed anymore
 rm -rf hadoop-3.2.0/
 
+# Doc
 
+doctoc README.md --github
 
 # test (local)
 
@@ -51,6 +53,8 @@ https://stackoverflow.com/questions/37200388/how-to-exit-spark-submit-after-the-
 
 
 ./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+
+./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 # Image building
 
