@@ -19,11 +19,13 @@
   - [Json2Parquet](#json2parquet)
   - [CreateTable](#createtable)
 - [Déploiement et mise en oeuvre](#d%C3%A9ploiement-et-mise-en-oeuvre)
+  - [Docker image registry](#docker-image-registry)
   - [Hive Metastore](#hive-metastore-1)
     - [Création de l'image docker.](#cr%C3%A9ation-de-limage-docker)
     - [Déploiement sur Kubernetes](#d%C3%A9ploiement-sur-kubernetes)
-  - [Déploiement et configuration de l'arborescence Spark](#d%C3%A9ploiement-et-configuration-de-larborescence-spark)
-  - [Generation des images Spark](#generation-des-images-spark)
+  - [Déploiement de l'arborescence Spark](#d%C3%A9ploiement-de-larborescence-spark)
+  - [Configuration de l'arborescence Spark](#configuration-de-larborescence-spark)
+  - [Generation de l'image Spark](#generation-de-limage-spark)
   - [Namespace and Account setup](#namespace-and-account-setup)
   - [Le script submit.sh](#le-script-submitsh)
   - [Fonctionnement local](#fonctionnement-local)
@@ -230,6 +232,16 @@ spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION
 
 ## Déploiement et mise en oeuvre
 
+### Docker image registry
+
+Pour la bonne mise en oeuvre de ce POC, il est nécessaire de construite des images docker, qui devront ensuite êtres déployées dans le ou les clusters cible. 
+
+Pour cela, le plus simpe est d'utiliser une 'Container Registry' publique, telle que Docker Hub. 
+
+Toutefois, les récentes limitations de celui-ci, en termes de nombre de requètes ont conduit à trouver une alternative.
+
+Pour ce POC, on utilisera donc la solution (gratuite) fournie par GitLab. 
+
 ### Hive Metastore
 
 Dans le cadre de ce POC, le Metastore Hive a vocation à être containerisé pour fonctionner dans Kubernetes 
@@ -273,7 +285,7 @@ Ce déploiement contient trois ressources:
 - Le deploiement lui-même.
 - Le service permettant l'accès, avec éventuellement un point d'accès depuis l'exterieur
 
-### Déploiement et configuration de l'arborescence Spark
+### Déploiement de l'arborescence Spark
 
 L'ensemble des scripts et autres fichiers de configuration qui sont utilisé dans la suite de ce document sont regroupé dans le repository <https://github.com/gha2/gha-workbench>. Le plus simple est donc de le cloner sur votre système, et de se placer à sa racine.
 
@@ -325,16 +337,97 @@ rm -rf hadoop-3.2.0/
 mv hadoop-3.2.0.tar.gz archives/
 ```
 
+### Configuration de l'arborescence Spark
 
+Il faut maintenant mettre en place certain fichiers de configuration :
 
+> Les fichiers ajoutés ou modifiés sont accessible ici : <https://github.com/gha2/gha-workbench/tree/master/spark-3.1.1>
 
-### Generation des images Spark
+- Créer un fichier log4j en dupliquant le template (Pas de modification ici)
+
+```
+cp spark-3.1.1/conf/log4j.properties.template spark-3.1.1/conf/log4j.properties
+```
+
+- Configurer le fichier `spark-3.1.1/conf/spark-defaults.conf` avec les informations suivantes   
+
+```
+spark.hadoop.mapreduce.outputcommitter.factory.scheme.s3a org.apache.hadoop.fs.s3a.commit.S3ACommitterFactory
+spark.hadoop.fs.s3a.committer.name directory
+spark.hadoop.fs.s3a.committer.staging.tmp.path /tmp/spark_staging
+spark.hadoop.fs.s3a.buffer.dir /tmp/spark_local_buf
+spark.hadoop.fs.s3a.committer.staging.conflict-mode fail
+spark.hadoop.fs.s3a.impl org.apache.hadoop.fs.s3a.S3AFileSystem
+spark.hadoop.fs.s3a.path.style.access true
+
+#spark.hadoop.fs.s3a.endpoint https://minio1.shared1/
+#spark.hadoop.fs.s3a.access.key minio
+#spark.hadoop.fs.s3a.secret.key minio123
+
+#spark.hive.metastore.uris thrift://tcp1.shared1:9083
+```
+
+Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser spark-sql, ou spark-shell en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
+
+- Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
+  - Ajouter une ligne `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant le lancement des exécutables. Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui est le cas dans le cadre de notre POC pour l'accès à Minio.
+  - Ajouter une option `--verbose` au lancement du driver. Ceci est optionnel, et permet l'affichage des valeurs retenues pour la configuration.
+  
+  Voici un extrait de ce fichier avec les modifications.   
+
+```
+.....
+export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
+
+case "$1" in
+driver)
+shift 1
+CMD=(
+"$SPARK_HOME/bin/spark-submit"
+--verbose
+--conf "spark.driver.bindAddress=$SPARK_DRIVER_BIND_ADDRESS"
+--deploy-mode client
+.....
+```
+
+### Generation de l'image Spark
+
+A partir de cette arborescence, il est maintenant simple de créer une image `spark`, qui sera téléchargé dans une registry accessible publiquement.
+
+Spark fournis en effet les scripts nécessaires : 
+
+```
+./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
+./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest push
+```
+
+A noter que cette image Spark est générique, c'est à dire qu'elle n'embarque pas de module applicatif.
 
 ### Namespace and Account setup
 
-https://mikefarah.gitbook.io/yq/
+Bien qu'il soit possible de déployer nos applications Spark dans le namespace par défaut, et avec une compte de type 'superadmin',
+les bonnes pratiques requièrent que l'on déploie dans un namespace dédié (Ou partagé avec d'autres applications) et à partir d'un compte limité au strict nécéssaire.
+
+Créer cet environnement est l'objet du script <https://github.com/gha2/gha-workbench/blob/master/k8s/setup.sh>
+
+> IMPORTANT: le bon fonctionnement du script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptés au système d'exploitation.
+
+Ce script va :
+
+- Créer un namespace dédié ('spark' par défaut).
+- Créer un compte de service.
+- Créer un role RBAC avec les droits nécéssaires et suffisant pour lancer un Job Spark.
+- Associer ce role au compte de service
+- Génerer localement un fichier de type 'kubconfig' permettant la connexion au cluster sous ce même compte de service. 
+
+
+
 
 ### Le script submit.sh
+
+https://stedolan.github.io/jq/
+
+
 
 ### Fonctionnement local
 
