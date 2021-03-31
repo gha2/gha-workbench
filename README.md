@@ -410,7 +410,8 @@ les bonnes pratiques requièrent que l'on déploie dans un namespace dédié (Ou
 
 Créer cet environnement est l'objet du script <https://github.com/gha2/gha-workbench/blob/master/k8s/setup.sh>
 
-> IMPORTANT: le bon fonctionnement du script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptés au système d'exploitation.
+> IMPORTANT: le bon fonctionnement de ce script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptée au système d'exploitation.
+
 
 Ce script va :
 
@@ -418,20 +419,58 @@ Ce script va :
 - Créer un compte de service.
 - Créer un role RBAC avec les droits nécéssaires et suffisant pour lancer un Job Spark.
 - Associer ce role au compte de service
-- Génerer localement un fichier de type 'kubconfig' permettant la connexion au cluster sous ce même compte de service. 
+- Générer localement un fichier de type 'kubconfig' permettant la connexion au cluster sous ce même compte de service. 
 
+Bien sur, `kubectl` doit etres configuré pour accéder au cluster cible, avec les droits d'administration.
 
+Voici le résultat de l'exécution de ce script :
 
+```
+$ ./setup.sh
+namespace/spark created
+serviceaccount/spark created
+role.rbac.authorization.k8s.io/spark created
+rolebinding.rbac.authorization.k8s.io/spark created
+To switch to spark config:
+export KUBECONFIG=/Users/sa/dev/g6/git/gha-workbench/k8s/kubeconfig.spark.kspray1.local
+```
+
+On peut donc couper/coller la dernière ligne pour s'identier sous le compte de service 'spark'
 
 ### Le script submit.sh
 
-https://stedolan.github.io/jq/
+Traditionnellement, la commande `spark-submit` nécéssite un nombre important de paramètres, permettant de s'adapter au contexte.
 
+Dans le cadre de ce POC, un wrapper est utliser pour mutualiser la plupart de ces paramètres. Il s'agit du script <https://github.com/gha2/gha-workbench/blob/master/k8s/submit.sh>.
+
+> IMPORTANT: Comme le script setup.sh, le bon fonctionnement de ce script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptée au système d'exploitation.
+
+Les points particulier à noter:
+- Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
+- La commande 'spark-submit' requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
+- Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat issue d'une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (gha2spark-0.1.0-uber.jar dans notre cas) passé avec l'oprion `file://...`.
+- Ce script accept en premier parametre le nom de classe à lancer (Json2Parquet ou CreateTable dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
+
+Voici un exemple de lancement permettant de convertir un unique fichier :
+
+```
+./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1
+```
+
+Comme évoqué précédemment, la commande Json2Parquet travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition parquet correspondante.
+
+La commande suivante lance la commande Json2Parquet sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
+
+```
+./submit.sh Json2Parquet --backDays 0  --waitSeconds 30 --srcBucketFormat gharaw1
+```
+
+On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le submit.sh
 
 
 ### Fonctionnement local
 
-### Déploiement effectif
+
 
 
 ## Next steps

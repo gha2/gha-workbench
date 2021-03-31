@@ -23,7 +23,7 @@ fi
 
 GHA2SPARK=$BASEDIR/../gha2spark
 
-cd $GHA2SPARK && gradle
+cd $GHA2SPARK && ./gradlew
 if [ $? -ne 0 ]
 then
   exit 1
