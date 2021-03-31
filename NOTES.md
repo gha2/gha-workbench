@@ -43,18 +43,15 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 As S3 connection parameters are now in spark-submit:
 
-./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1
+./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
 
-As daemon:
-./submit.sh Json2Parquet --backDays 0 --maxFiles 2 --waitSeconds 30 --srcBucketFormat gharaw1
+./submit.sh Json2Parquet --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
 
-Todo:
-https://stackoverflow.com/questions/37200388/how-to-exit-spark-submit-after-the-submission
+./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
+--select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
-
-./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
-
-./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 
 # Image building
 

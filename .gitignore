@@ -1,8 +1,11 @@
 /.idea/
 /.project
 /gha-workbench.iml
+/metastore_db/
+/derby.log
 
 spark-3.1.1/*
 !spark-3.1.1/conf/log4j.properties
 !spark-3.1.1/conf/spark-defaults.conf
 !spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh
+

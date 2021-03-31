@@ -23,13 +23,13 @@
   - [Hive Metastore](#hive-metastore-1)
     - [Création de l'image docker.](#cr%C3%A9ation-de-limage-docker)
     - [Déploiement sur Kubernetes](#d%C3%A9ploiement-sur-kubernetes)
-  - [Déploiement de l'arborescence Spark](#d%C3%A9ploiement-de-larborescence-spark)
-  - [Configuration de l'arborescence Spark](#configuration-de-larborescence-spark)
+  - [Déploiement de l'arborescence Spark (En local)](#d%C3%A9ploiement-de-larborescence-spark-en-local)
+  - [Configuration de l'arborescence Spark locale](#configuration-de-larborescence-spark-locale)
   - [Generation de l'image Spark](#generation-de-limage-spark)
   - [Namespace and Account setup](#namespace-and-account-setup)
   - [Le script submit.sh](#le-script-submitsh)
+    - [Exemples d'utilisation](#exemples-dutilisation)
   - [Fonctionnement local](#fonctionnement-local)
-  - [Déploiement effectif](#d%C3%A9ploiement-effectif)
 - [Next steps](#next-steps)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -50,10 +50,10 @@ Voici le schéma général :
 
 ![](docs/overview.jpg)
 
-- Github publie toute les heures un nouveau fichier regroupant toutes les opérations. Un premier module (gha2minio) se charge de collecter 
-  ces fichiers et de les stocker tel quel dans un premier espace de stockage (Lac primaire). Ces fichiers sont au format json.
-- Un second processus (Json2parquet) se charge de transformer ces données en format parquet, permettant ainsi de les voir comme une table unique. Ces données sont stockées dans un espace désigné comme Lac secondaire.
-- Ensuite, des processus spécifiques (CreateTable) restructure cette table de base en une ou plusieurs tables adapté aux objectifs d'analyse. A la différence de la table de base, les définitions de ces tables sont référencées dans un metastore, basé sur celui utilisé par Hive. Les données elles même étant stockées dans S3, dans un troisième espace (Datamart).
+- Github publie toute les heures un nouveau fichier regroupant toutes les opérations. Un premier module (`gha2minio`) se charge de collecter 
+  ces fichiers et de les stocker tel quel dans un premier espace de stockage (Lac primaire). Ces fichiers sont au format JSON.
+- Un second processus (`Json2parquet`) se charge de transformer ces données en format parquet, permettant ainsi de les voir comme une table unique. Ces données sont stockées dans un espace désigné comme Lac secondaire.
+- Ensuite, des processus spécifiques (`CreateTable`) restructure cette table de base en une ou plusieurs tables adapté aux objectifs d'analyse. A la différence de la table de base, les définitions de ces tables sont référencées dans un metastore, basé sur celui utilisé par Hive. Les données elles même étant stockées dans S3, dans un troisième espace (Datamart).
 
 A chacun de ces trois espaces correspond un bucket S3. 
 
@@ -61,13 +61,19 @@ Les détails du format de stockage seront décrit ultérieurement.
 
 ## Composant d'infrastructure
 
+### Kubernetes
+
+Ce POC est déployé sur un cluster Kubernetes installé en utilisant [kubespray](https://github.com/kubernetes-sigs/kubespray). Même si ce déploiement est en pratique effectué sur une infrastructure de virtualisation, il est très proche d'un déploiement 'bare metal'.
+
+RBAC et les PodSecurityPolicy sont activées.
+
 ### ArgoCD 
 
 ArgoCD est une application Kubernetes permettant l'automatisation des déploiements aussi bien applicatif que middleware. 
 
-Il permet le pattern GitOps, évolution de l'IAC (Infrastructure As Code) en automatisant la réconciliation entre les définitions stockées dans Git et la réalité des applications déployés sur le cluster.
+Il permet le pattern GitOps, évolution de l'IAC (Infrastructure As Code) en automatisant la réconciliation entre les définitions stockées dans Git et la réalité des applications déployées sur le cluster.
 
-Avec ArgoCD, un déploiement peut lui-même être décrit sous la forme d'un manifest Kubernetes, ce qui permet le pattern appsOfApps.
+Avec ArgoCD, un déploiement peut lui-même être décrit sous la forme d'un manifest Kubernetes, ce qui permet le pattern app-of-apps (Ou Meta application).
 
 L'ensemble des déploiements utilisés pour ce Poc sont [dans ce repo](https://github.com/BROADSoftware/depack). 
 
@@ -78,7 +84,7 @@ Pour pouvoir rentrer dans ce moule, un déploiement doit pouvoir être entièrem
 Minio est un projet opensource fournissant un stockage de type S3 sur une infrastructure bare-metal. 
 Dans notre contexte, il sera utilisé comme stockage principal pour tous les déployments hors cloud.
 
-Outre la fonctionnalité serveur de stockage, Minio fournis aussi un interface CLI et des SDK dans différents languages, permettant l'accès à des fonctionnalités étendues. Mais, un serveur Minio est aussi accessible en utilisant les outils (CLI, libraries, SDK) standard AWS.
+Outre la fonctionnalité serveur de stockage, Minio fournis aussi un interface CLI et des SDK dans différents languages, permettant l'accès à des fonctionnalités étendues. Mais, un serveur Minio est aussi accessible en utilisant les outils  standard AWS (CLI, libraries, SDK).
 
 Dans le cadre de ce POC, Minio est configuré de manière 'secure', en utilisant https. Le certificat serveur étant émis par une autorité globale au cluster, il y aura donc lieux, pour les applications y accédant soit de fournir le certificat de cette autorité, soit de désactiver la vérification de validité du certificat serveur..
 
@@ -93,9 +99,9 @@ Cette deuxième méthode a été utilisée dans notre contexte. [Voir ici pour l
 
 ### Topolvm
 
-Topolvm est un driver CSI (Container Storage Interface) permettant la création dynamique de Logical Volume LVM et leur attachement aux containers applicatifs.
+Topolvm est un driver CSI (Container Storage Interface) permettant la création dynamique de `LogicalVolume` LVM et leur attachement aux containers applicatifs.
 
-Il est notamment utilisé pour satisfaire les PVC (PersistantVolumeClaim) demandés par Minio.
+Il est notamment utilisé pour satisfaire les PVC (`PersistantVolumeClaim`) demandés par Minio.
 
 Topolvm est déployé à la création du cluster. (Il est incompatible avec le pattern appsOfApps, car il nécessite notamment le déployement de modules systemd)
 
@@ -107,7 +113,7 @@ Dans le cadre de notre POC, l'autre différence est la substitution du stockage 
 
 #### Spark operateur
 
-Out of the box, le déploiement d'une application Spark consiste à lancer un spark-submit à l'extérieur du cluster. Ce pattern impératif n'est donc pas compatible avec une logique GitOps.
+En standard, le déploiement d'une application Spark consiste à lancer une commande `spark-submit` depuis l'extérieur du cluster. Ce pattern impératif n'est donc pas compatible avec une logique GitOps.
 
 Un projet de google [Spark Operateur](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator) permet de résoudre ce problème en permettant de définir une application spark de manière déclarative.
 
@@ -123,13 +129,13 @@ Pour le Metastore Hive, PostgreSQL sera utilisé, dans sa version 9.6.
 
 Le deploiement en est [ici](https://github.com/BROADSoftware/depack/tree/master/middlewares/postgresql/server)
 
-A noter que dans le cadre de ce POC, la persistence est généralement assuré par un stockage local (En utilisant Topolvm). Ce qui implique une adhérence entre le serveur et le noeud qui le porte. Ceci est bien évidement inacceptable dans un contexte autre que celui d'un POC.
+A noter que dans le cadre de ce POC, la persistence est généralement assurée par un stockage local (En utilisant Topolvm). Ce qui implique une adhérence entre le serveur et le noeud qui le porte. Ceci est bien évidement inacceptable dans un contexte autre que celui d'un POC.
 
 ## Composant applicatifs
 
 ### gha2minio
 
-Ce premier module permet donc de télécharger les archive Github. Celles-ci sont disponibles en téléchargement sous la forme suivante: 
+Ce premier module permet donc de télécharger les archive Github. Celles-ci sont disponibles en téléchargement sous la forme suivante : 
 
 `https://data.gharchive.org/<year>-<month>-<day>-<hour>.json.gz`
 
@@ -137,13 +143,13 @@ Par exemple: `https://data.gharchive.org/2015-01-01-15.json.gz`
 
 Elles seront stockées dans notre S3 sous la forme:
 
-![](.README_images/gharaw1.png)
+![](.README_images/gha-primary-1.png)
 
-La logique de gha2minio est la suivante: On va remonter dans le temps d'un certain nombre de jours (configurable) et regarder dans notre stockage S3 si le fichier correspondant est déja stocké. Si oui, on passe au suivant. Et si non, on le télécharge et on le sauvegarde.
+La logique de `gha2minio` est la suivante: On va remonter dans le temps d'un certain nombre de jours (configurable) et regarder dans notre stockage S3 si le fichier correspondant est déja stocké. Si oui, on passe au suivant. Et si non, on le télécharge et on le sauvegarde.
 
-Le processus s'arrête lorsque la tentative de téléchargement est infructueuse. Si l'on est à quelques heures du moment présent, on considère que l'on a terminé et que l'on recommencera plus tard, lorsuq'un nouveau fichier sera disponible. Et si l'on est éloigné du moment présent, on notifie une erreur.
+Le processus s'arrête lorsque la tentative de téléchargement est infructueuse. Si l'on est à quelques heures du moment présent, on considère que l'on a terminé et que l'on recommencera plus tard, lorsqu'un nouveau fichier sera disponible. Et si l'on est éloigné du moment présent, on notifie une erreur.
 
-Gha2minio est donc un processus fonctionnant en permanence, et allant, à interval régulier, effectuer une réconciliation entre ce qui est stocké et ce qui est disponible sur le site Github.
+`Gha2minio` est donc un processus fonctionnant en permanence, et allant, à interval régulier, effectuer une réconciliation entre ce qui est stocké et ce qui est disponible sur le site Github.
 
 Voici un exemple de logs:
 
@@ -170,12 +176,12 @@ Voici un exemple de logs:
 
 Quelques autres points notables :
 
-- Gha2minio est déployé dans un namespace dédié (gha1).
+- `Gha2minio` est déployé dans un namespace dédié (`gha1`).
 - Les patterns des nom de fichier d'entrés et de sortie sont configurable, ainsi que de nombreux paramètres de fonctionnement (Périodicité, durée de remonté dans le passé, limitation du nombre de téléchargement par itération, etc...)
-- Gha2minio est développé en python et utilise le sdk Minio.
+- `Gha2minio` est développé en Python et utilise le sdk Minio.
 - L'ensemble des paramètres est passé en ligne de commande à l'exécutable. Lors de l'utilisation en container, un script wrapper de lancement construit cette ligne de commande à partir de variables d'environnement.
 - Le Certificat racine permettant la validation de le connection https vers minio est monté sous forme de secret. A noter que ce certificat étant originellement présent dans un namespace différent, il y a lieux d'utiliser un [outil de réplication](https://github.com/mittwald/kubernetes-replicator).
-- Les paramètres d'accès à Minio (Url, login, ...) sont aussi stocké sous forme de secret.
+- Les paramètres d'accès à Minio (Url, login, ...) sont aussi stockés sous forme de secret.
 
 Le projet est accessible par ce lien: <https://github.com/gha2/gha2minio>.
 
@@ -185,13 +191,13 @@ Et le deploiement dans le cadre de notre POC: <https://github.com/BROADSoftware/
 
 L'objet de cette application est donc de transformer les données brutes, stockées en format JSON en donnée exploitable facilement par Spark, sous la forme d'une table au format parquet. 
 
-La logique de Json2Parquet est un peu équivalente à celle de Gha2Minio.
+La logique de `Json2Parquet` est un peu équivalente à celle de `gha2Minio`.
 
 Les données résultantes sont stockées sous la forme d'une table parquet partitionné par un identifiant de fichier source
 
-![](.README_images/gha-raw.png)
+![](.README_images/gha-secondary-1.png)
 
-Ceci permet donc de fonctionner sur un principe de réconciliation, puisqu'il y une correspondance entre un fichier source (Format cible de gha2minio) et un répertoire/partition dans la table cible.
+Ceci permet donc de fonctionner sur un principe de réconciliation, puisqu'il y une correspondance entre un fichier source (Format cible de `gha2minio`) et un répertoire/partition dans la table cible.
 
 La transformation elle-même est simple
 
@@ -200,19 +206,19 @@ Dataset<Row> df = spark.read().format("json").option("inferSchema", "true").load
 df.write().mode(SaveMode.Overwrite).save(String.format("s3a://%s/%s", dstBucket, dstObject));
 ```
 
-Json2Parquet est un module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
+`Json2Parquet` est un module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
 
 Les patterns des noms de fichier d'entrés et de sortie sont configurable, ainsi que de nombreux paramètres de fonctionnement (Périodicité, durée de remonté dans le passé, limitation du nombre de transformation par itération, etc...).
 
-Json2Parquet n'interagit pas avec le Metastore Hive et est indépendant de celui-ci.
+`Json2Parquet` n'interagit pas avec le Metastore Hive et est indépendant de celui-ci.
 
 Son utilisation effective est détaillée plus bas.
 
 ### CreateTable
 
-Create table est un autre module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
+`CreateTable` est un autre module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
 
-Son objet est de générer une nouvelle table à partir d'une requête effectuée sur la table principale (Générée par Json2Parquet). Pour cela, un paramètre permet de passer une clause 'select': 
+Son objet est de générer une nouvelle table à partir d'une requête effectuée sur la table principale (Générée par `Json2Parquet`). Pour cela, un paramètre permet de passer une clause 'select'. Par exemple : 
 
 `--select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"`
 
@@ -236,8 +242,7 @@ spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION
 
 Pour la bonne mise en oeuvre de ce POC, il est nécessaire de construite des images docker, qui devront ensuite êtres déployées dans le ou les clusters cible. 
 
-Pour cela, le plus simpe est d'utiliser une 'Container Registry' publique, telle que Docker Hub. 
-
+Pour cela, le plus simple est d'utiliser une 'Container Registry' publique, telle que Docker Hub. 
 Toutefois, les récentes limitations de celui-ci, en termes de nombre de requètes ont conduit à trouver une alternative.
 
 Pour ce POC, on utilisera donc la solution (gratuite) fournie par GitLab. 
@@ -250,20 +255,20 @@ Dans le cadre de ce POC, le Metastore Hive a vocation à être containerisé pou
 
 Le projet <https://github.com/gha2/standalone-hive-metastore> héberge le Dockerfile adéquat, et les scripts associés.
 
-Ce Dokerfile part d'une image openjdk 1.8. Ensuite:
+Ce Dokerfile part d'une image `openjdk 1.8`. Ensuite:
 
 - Il télécharge les binaires d'une version standalone du Metastore Hive et les déploie.
 - Il télécharge les binaires 'hadoop common' et les déploie.
-- Il supprime une configuration log4j conflictuelle.
-- Il ajoute les modules nécéssaire à la connection postgresql
+- Il supprime une configuration `log4j` conflictuelle.
+- Il ajoute les modules nécéssaires à la connection postgresql
 - Il ajuste les droits pour permettre le fonctionnement sous un compte non-root 'hive'
-- Il ajoute une configuration de sudoers, pour permettre de passer 'root'. Ceci est pratique pour la mise au point, mais devra etres supprimé par la suite. 
-  (A noter que pour pouvoir passer 'root' il faut aussi utiliser PodSecurityPolicy libérale).
+- Il ajoute une configuration de `sudoers`, pour permettre de passer 'root'. Ceci est pratique pour la mise au point, mais devra être supprimé par la suite. 
+  (A noter que pour pouvoir passer 'root' il faut aussi utiliser une PodSecurityPolicy libérale).
 - Il copie le script de lancement.
 
 Ce script de lancement accepte de nombreux paramètre en entrée, passés sous forme de variable d'environnement. 
-A noter qu'il est susceptible d'initialiser la base de données si elle n'est pas présente, 
-il est donc aussi nécéssaire de fournir les paramètres nécéssaires à cette initialisation.
+A noter qu'il est susceptible d'initialiser la base de données si elle n'est pas présente.  
+Il est donc aussi nécessaire de fournir les paramètres requis pour cette initialisation.
 
 Le script de lancement va donc:
 
@@ -283,17 +288,18 @@ Le déploiement du Metastore Hive dans le cadre de notre POC est déini ici : <h
 Ce déploiement contient trois ressources:
 - Un secret contenant les paramètres d'accès à Minio.
 - Le deploiement lui-même.
-- Le service permettant l'accès, avec éventuellement un point d'accès depuis l'exterieur
+- Le service permettant l'accès, avec éventuellement un point d'accès depuis l'extérieur
 
-### Déploiement de l'arborescence Spark
+### Déploiement de l'arborescence Spark (En local)
 
 L'ensemble des scripts et autres fichiers de configuration qui sont utilisé dans la suite de ce document sont regroupé dans le repository <https://github.com/gha2/gha-workbench>. Le plus simple est donc de le cloner sur votre système, et de se placer à sa racine.
 
-Il est d'abord nécéssaire de déployer une arborescence Spark, pour deux usages:
-- Etre à la base de la construction des images docker Spark.
-- Permettre l'execution en local de spark-submit, spark-shell, etc....
+Il est d'abord nécessaire de déployer une arborescence Spark, pour deux usages :
 
-Pour cela, il faut télécharger sur le site Spark la version `Pre-built for Apache Hadoop 3.2 and later`, puis de la déployer dans la racine de notre projet. 
+- Etre à la base de la construction des images docker Spark.
+- Permettre l'exécution en local de `spark-submit`, `spark-shell`, etc....
+
+Pour cela, il faut télécharger sur le site Spark la version `Pre-built for Apache Hadoop 3.2 and later`, puis la déployer dans la racine de notre projet. 
 On pourra aussi le renommer, pour simplifier le path
 
 ```
@@ -321,7 +327,7 @@ spark-3.1.1/jars/hadoop-auth-3.2.0.jar				spark-3.1.1/jars/hadoop-yarn-api-3.2.0
 
 Dans notre cas, il s'agit donc de la version 3.2.0.
 
-Nous pouvons donc récupérer l'archive correspondante, et en copier les fichiers qui nous interèssent dans notre déploiement Spark:
+Nous pouvons donc récupérer l'archive correspondante, et en copier les fichiers qui nous intéressent dans notre déploiement Spark:
 
 ```
 wget https://archive.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
@@ -330,20 +336,20 @@ cp ./hadoop-3.2.0/share/hadoop/tools/lib/hadoop-aws-3.2.0.jar spark-3.1.1/jars
 cp ./hadoop-3.2.0/share/hadoop/tools/lib/aws-java-sdk-bundle-1.11.375.jar spark-3.1.1/jars
 ```
 
-Nous pouvons ensuite supprimer le déploiement Hadoop et mettre l'archive de coté, au cas où :
+Nous pouvons ensuite supprimer le déploiement Hadoop et mettre l'archive de côté, au cas où :
 
 ```
 rm -rf hadoop-3.2.0/
 mv hadoop-3.2.0.tar.gz archives/
 ```
 
-### Configuration de l'arborescence Spark
+### Configuration de l'arborescence Spark locale
 
-Il faut maintenant mettre en place certain fichiers de configuration :
+Il faut maintenant mettre en place certains fichiers de configuration :
 
 > Les fichiers ajoutés ou modifiés sont accessible ici : <https://github.com/gha2/gha-workbench/tree/master/spark-3.1.1>
 
-- Créer un fichier log4j en dupliquant le template (Pas de modification ici)
+- Créer un fichier `log4j.properties` en dupliquant le template, sans le modifier.
 
 ```
 cp spark-3.1.1/conf/log4j.properties.template spark-3.1.1/conf/log4j.properties
@@ -367,7 +373,7 @@ spark.hadoop.fs.s3a.path.style.access true
 #spark.hive.metastore.uris thrift://tcp1.shared1:9083
 ```
 
-Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser spark-sql, ou spark-shell en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
+Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
 
 - Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
   - Ajouter une ligne `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant le lancement des exécutables. Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui est le cas dans le cadre de notre POC pour l'accès à Minio.
@@ -389,6 +395,8 @@ CMD=(
 --deploy-mode client
 .....
 ```
+
+(On peut se reporter à <https://github.com/gha2/gha-workbench/blob/master/spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh>)
 
 ### Generation de l'image Spark
 
@@ -435,43 +443,116 @@ To switch to spark config:
 export KUBECONFIG=/Users/sa/dev/g6/git/gha-workbench/k8s/kubeconfig.spark.kspray1.local
 ```
 
-On peut donc couper/coller la dernière ligne pour s'identier sous le compte de service 'spark'
+On peut donc couper/coller la dernière ligne pour s'identifier sous le compte de service 'spark'
 
 ### Le script submit.sh
 
-Traditionnellement, la commande `spark-submit` nécéssite un nombre important de paramètres, permettant de s'adapter au contexte.
+Traditionnellement, la commande `spark-submit` nécessite un nombre important de paramètres, permettant de s'adapter au contexte.
 
 Dans le cadre de ce POC, un wrapper est utliser pour mutualiser la plupart de ces paramètres. Il s'agit du script <https://github.com/gha2/gha-workbench/blob/master/k8s/submit.sh>.
 
 > IMPORTANT: Comme le script setup.sh, le bon fonctionnement de ce script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptée au système d'exploitation.
 
-Les points particulier à noter:
-- Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
-- La commande 'spark-submit' requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
-- Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat issue d'une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (gha2spark-0.1.0-uber.jar dans notre cas) passé avec l'oprion `file://...`.
-- Ce script accept en premier parametre le nom de classe à lancer (Json2Parquet ou CreateTable dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
+Les points particuliers à noter :
 
-Voici un exemple de lancement permettant de convertir un unique fichier :
+- Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
+- Ce script accepte en premier paramètre le nom de classe à lancer (`Json2Parquet` ou `CreateTable` dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
+- La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
+- Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (gha2spark-0.1.0-uber.jar dans notre cas) passé avec l'oprion `file://...`.
+- Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est ici pertinente que parce que les jobs Spark et Minio sont sur le même cluster K8S).
+- Le Launcher vas utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark lancés par ce même launcher.
+
+#### Exemples d'utilisation
+
+Voici un exemple de lancement permettant de convertir un fichier du datalake primaire (JSON) vers le secondaire (Parquet) :
 
 ```
-./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1
+./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
 ```
 
 Comme évoqué précédemment, la commande Json2Parquet travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition parquet correspondante.
 
-La commande suivante lance la commande Json2Parquet sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
+La commande suivante lance maintenant la commande `Json2Parquet` sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
 
 ```
-./submit.sh Json2Parquet --backDays 0  --waitSeconds 30 --srcBucketFormat gharaw1
+./submit.sh Json2Parquet --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
 ```
 
-On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le submit.sh
+On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le `submit.sh`.
 
+On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table 't1', référencée dans une database 'gha_dm_1' dans le metastore :
+
+```
+./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
+--select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+```
+
+On peut vérifier la bonne creation de cette table en utilisant un 'spark-shell' local :
+
+
+```
+$ export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
+$ ./spark-3.1.1/bin/spark-shell
+Picked up _JAVA_OPTIONS: -Dcom.amazonaws.sdk.disableCertChecking=true
+.....
+scala> spark.sql("show databases;").show
++---------+
+|namespace|
++---------+
+|  default|
+| gha_dm_1|
++---------+
+
+scala> spark.sql("show tables in gha_dm_1;").show
++--------+---------+-----------+
+|database|tableName|isTemporary|
++--------+---------+-----------+
+|gha_dm_1|       t1|      false|
++--------+---------+-----------+
+
+scala> spark.sql("SELECT * FROM gha_dm_1.t1 LIMIT 20;").show
+21/03/31 23:11:13 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+21/03/31 23:11:14 WARN AmazonHttpClient: SSL Certificate checking for endpoints has been explicitly disabled.
++---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
+|          actor|  actor_display|          org|                repo|                type| action|          src|
++---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
+|dependabot[bot]|     dependabot|         null|mrDevIll/natour-a...|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|llavenovemiel/sti...|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|linling98/304CEM_...|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|weymoz/singapoure...|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|jonsoku2/all_reac...|         CreateEvent|   null|2021-03-31-00|
+|  Nukukoricchio|  Nukukoricchio|         null|Nukukoricchio/Piazza|           PushEvent|   null|2021-03-31-00|
+|        ptarjan|        ptarjan|         null|ptarjan/rules_docker|         CreateEvent|   null|2021-03-31-00|
+|JailtonJunior94|JailtonJunior94|         null|JailtonJunior94/f...|           PushEvent|   null|2021-03-31-00|
+|        Draylar|        Draylar|         null|      Draylar/fabric|           PushEvent|   null|2021-03-31-00|
+|    vinisalazar|    vinisalazar|  swcarpentry|swcarpentry/pytho...|PullRequestReview...|created|2021-03-31-00|
+|  renovate[bot]|       renovate|asecurityteam|asecurityteam/aws...|           PushEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|rkesters/baseWebF...|    PullRequestEvent| opened|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|pattyouwehand/gre...|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|adirgil/MoonSite-...|    PullRequestEvent| opened|2021-03-31-00|
+|breakingheatmap|breakingheatmap|         null|breakingheatmap/b...|           PushEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|nicobytes/codelab...|    PullRequestEvent| opened|2021-03-31-00|
+|    vinisalazar|    vinisalazar|  swcarpentry|swcarpentry/pytho...|PullRequestReview...|created|2021-03-31-00|
+|     tfttesting|     tfttesting|         null|tfttesting/RYvWQo...|         IssuesEvent| opened|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|    smile-j/test-vue|         CreateEvent|   null|2021-03-31-00|
+|dependabot[bot]|     dependabot|         null|mrDevIll/natour-a...|    PullRequestEvent| opened|2021-03-31-00|
++---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
+
+scala>
+```
+
+Deux conditions pour que cela fonctionne :
+
+- Executer `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant de lancer `spark-shell`, car sinon l'accès au stockage S3 ne peut s'effectuer.
+- Avoir configuré l'accès S3 et au metastore dans le fichier `./spark-3.1.1/conf/spark-defaults.conf`
 
 ### Fonctionnement local
 
+Durant les phases de mise au point, afin de raccourcir le cycle de test, il peut être plus simple de tester les différents modules hors d'un contexte Kubernetes. 
 
-
+Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utiliser les différents `docker-compose.yml` des répertoires `./stackX` pour instancier Minio, Postgresql, ... hors de Kubernetes. 
 
 ## Next steps
 
@@ -486,6 +567,7 @@ On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alte
 - Etude YuniKorn
 - Access (beeline, JDBC, spark Thrift server)
 - Jupyter notebook
+- https://www.querybook.org/  
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).  
 - HDFS on kubernetes ?
