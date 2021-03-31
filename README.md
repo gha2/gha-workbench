@@ -127,7 +127,7 @@ Il requiert un SGBD tel que PostgreSQL, Oracle ou MySQL.
 
 Pour le Metastore Hive, PostgreSQL sera utilisé, dans sa version 9.6.
 
-Le deploiement en est [ici](https://github.com/BROADSoftware/depack/tree/master/middlewares/postgresql/server)
+Le deploiement dans notre contexte est [ici](https://github.com/BROADSoftware/depack/tree/master/middlewares/postgresql/server)
 
 A noter que dans le cadre de ce POC, la persistence est généralement assurée par un stockage local (En utilisant Topolvm). Ce qui implique une adhérence entre le serveur et le noeud qui le porte. Ceci est bien évidement inacceptable dans un contexte autre que celui d'un POC.
 
@@ -258,12 +258,12 @@ Le projet <https://github.com/gha2/standalone-hive-metastore> héberge le Docker
 Ce Dokerfile part d'une image `openjdk 1.8`. Ensuite:
 
 - Il télécharge les binaires d'une version standalone du Metastore Hive et les déploie.
-- Il télécharge les binaires 'hadoop common' et les déploie.
+- Il télécharge les binaires `hadoop common` et les déploie.
 - Il supprime une configuration `log4j` conflictuelle.
 - Il ajoute les modules nécéssaires à la connection postgresql
-- Il ajuste les droits pour permettre le fonctionnement sous un compte non-root 'hive'
-- Il ajoute une configuration de `sudoers`, pour permettre de passer 'root'. Ceci est pratique pour la mise au point, mais devra être supprimé par la suite. 
-  (A noter que pour pouvoir passer 'root' il faut aussi utiliser une PodSecurityPolicy libérale).
+- Il ajuste les droits pour permettre le fonctionnement sous un compte non-root `hive`
+- Il ajoute une configuration de `sudoers`, pour permettre de passer `root`. Ceci est très utile pour la mise au point, mais devra être supprimé par la suite. 
+  (A noter que pour pouvoir passer `root` il faut aussi activer une `PodSecurityPolicy` libérale).
 - Il copie le script de lancement.
 
 Ce script de lancement accepte de nombreux paramètre en entrée, passés sous forme de variable d'environnement. 
@@ -283,12 +283,13 @@ A noter en fin de script une astuce optionnelle retardant la fin d'exécution du
 
 #### Déploiement sur Kubernetes
 
-Le déploiement du Metastore Hive dans le cadre de notre POC est déini ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/hive-metastore>
+Le déploiement du Metastore Hive dans le cadre de notre POC est défini ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/hive-metastore>
 
-Ce déploiement contient trois ressources:
-- Un secret contenant les paramètres d'accès à Minio.
-- Le deploiement lui-même.
-- Le service permettant l'accès, avec éventuellement un point d'accès depuis l'extérieur
+Ce déploiement contient trois ressources :
+
+- Un Secret contenant les paramètres d'accès à Minio.
+- Le Déploiement lui-même.
+- Le Service permettant l'accès, avec éventuellement un point d'accès depuis l'extérieur
 
 ### Déploiement de l'arborescence Spark (En local)
 
@@ -396,7 +397,7 @@ CMD=(
 .....
 ```
 
-(On peut se reporter à <https://github.com/gha2/gha-workbench/blob/master/spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh>)
+Le fichier complet est disponible à cet endroit : <https://github.com/gha2/gha-workbench/blob/master/spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh>.
 
 ### Generation de l'image Spark
 
@@ -458,7 +459,7 @@ Les points particuliers à noter :
 - Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
 - Ce script accepte en premier paramètre le nom de classe à lancer (`Json2Parquet` ou `CreateTable` dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
 - La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
-- Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (gha2spark-0.1.0-uber.jar dans notre cas) passé avec l'oprion `file://...`.
+- Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (`gha2spark-0.1.0-uber.jar` dans notre cas) passé avec l'option `file://...`.
 - Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est ici pertinente que parce que les jobs Spark et Minio sont sur le même cluster K8S).
 - Le Launcher vas utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark lancés par ce même launcher.
 
@@ -482,7 +483,7 @@ La commande suivante lance maintenant la commande `Json2Parquet` sous forme de d
 
 On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le `submit.sh`.
 
-On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table 't1', référencée dans une database 'gha_dm_1' dans le metastore :
+On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table `t1`, référencée dans une database `gha_dm_1` dans le metastore :
 
 ```
 ./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
