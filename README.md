@@ -461,9 +461,11 @@ Les points particuliers à noter :
 - La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
 - Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (`gha2spark-0.1.0-uber.jar` dans notre cas) passé avec l'option `file://...`.
 - Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est ici pertinente que parce que les jobs Spark et Minio sont sur le même cluster K8S).
-- Le Launcher vas utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark lancés par ce même launcher.
+- Le Launcher va utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark lancés par ce même launcher.
 
 #### Exemples d'utilisation
+
+> Il est imperatif de configurer `spark-3.1.1/conf/spark-defaults.conf` ET `submit.sh` avec les valeurs d'accès au stockage S3. 
 
 Voici un exemple de lancement permettant de convertir un fichier du datalake primaire (JSON) vers le secondaire (Parquet) :
 
@@ -486,12 +488,15 @@ On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alte
 On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table `t1`, référencée dans une database `gha_dm_1` dans le metastore :
 
 ```
-./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
+./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
 ```
 
+> As the metastore is accessed only from the spark containers, internal (Kubernetes service) address can be provided.
+
 On peut vérifier la bonne creation de cette table en utilisant un 'spark-shell' local :
 
+> Pour que le `spark-shell` puisse accéder au metastore, il faut que la valeur de `spark.hive.metastore.uris` dans le fichier `spark-3.1.1/conf/spark-defaults.conf` soit configuré sur un point d'accès externe au metastore. Comme le protocole `thrift` n'est pas supporté par l'ingress controller, ce point d'accès devra est une IP attribuée à un load balancer.
 
 ```
 $ export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
@@ -544,10 +549,13 @@ scala> spark.sql("SELECT * FROM gha_dm_1.t1 LIMIT 20;").show
 scala>
 ```
 
-Deux conditions pour que cela fonctionne :
+Trois conditions pour que cela fonctionne :
 
 - Executer `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant de lancer `spark-shell`, car sinon l'accès au stockage S3 ne peut s'effectuer.
-- Avoir configuré l'accès S3 et au metastore dans le fichier `./spark-3.1.1/conf/spark-defaults.conf`
+- Avoir configuré l'accès S3 dans le fichier `./spark-3.1.1/conf/spark-defaults.conf`
+- Que le `spark-shell` puisse accéder au metastore. Pour cela, il faut que la valeur de `spark.hive.metastore.uris` dans ce fichier `spark-3.1.1/conf/spark-defaults.conf` soit configurée sur un point d'accès externe au metastore. 
+  
+> Comme le protocole `thrift` n'est pas supporté par l'ingress controller, ce point d'accès devra est une IP attribuée à un load balancer.
 
 ### Fonctionnement local
 
@@ -559,9 +567,11 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 
 - spark operator
 - Benchmark (TPC-DS, ....)
+- Monitoring  
 - Etude de l'utilisation du stockage (Spilling)
+- Node affinity
 - Setup history server
-- Limitation des ressources
+- Gestion des ressources RAM/CPU
 - Gestion des droits S3
 - Deployement AWS
 - Etude DeltaLake
@@ -572,6 +582,7 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).  
 - HDFS on kubernetes ?
+- Trouver un opérateur S3 pour gestion des buckets
 
 
 
