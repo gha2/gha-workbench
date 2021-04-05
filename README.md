@@ -6,6 +6,7 @@
 
 - [Overview](#overview)
 - [Composant d'infrastructure](#composant-dinfrastructure)
+  - [Kubernetes](#kubernetes)
   - [ArgoCD](#argocd)
   - [Minio](#minio)
     - [Déploiement](#d%C3%A9ploiement)
@@ -29,6 +30,7 @@
   - [Namespace and Account setup](#namespace-and-account-setup)
   - [Le script submit.sh](#le-script-submitsh)
     - [Exemples d'utilisation](#exemples-dutilisation)
+  - [Spark UI front end](#spark-ui-front-end)
   - [Fonctionnement local](#fonctionnement-local)
 - [Next steps](#next-steps)
 
@@ -471,7 +473,7 @@ Voici un exemple de lancement permettant de convertir un fichier du datalake pri
 
 ```
 ./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
---dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
+--dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
 Comme évoqué précédemment, la commande Json2Parquet travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition parquet correspondante.
@@ -480,7 +482,7 @@ La commande suivante lance maintenant la commande `Json2Parquet` sous forme de d
 
 ```
 ./submit.sh Json2Parquet --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
---dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
+--dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
 On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le `submit.sh`.
@@ -488,9 +490,19 @@ On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alte
 On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table `t1`, référencée dans une database `gha_dm_1` dans le metastore :
 
 ```
-./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
---select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
+ FROM _src_"
 ```
+
+Ou bien, si l'on souhaite avoir un résultat ordonné : 
+
+```
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t2 --dstBucket gha-dm-1 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
+ FROM _src_ ORDER BY repo"
+```
+
 
 > As the metastore is accessed only from the spark containers, internal (Kubernetes service) address can be provided.
 
@@ -557,6 +569,24 @@ Trois conditions pour que cela fonctionne :
   
 > Comme le protocole `thrift` n'est pas supporté par l'ingress controller, ce point d'accès devra est une IP attribuée à un load balancer.
 
+### Spark UI front end
+
+Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'éxécution des tâches. Cette interface est accessible sur le port 404 du container.
+
+Il est donc possible d'avoir accès à cette interface avec la commande `port-forward`. Par exemple :
+
+```
+kubectl -n spark port-forward json2parquet-8e7b35789c1c9f50-driver 4041:4040
+```
+
+On pourra ensuite pointer son navigateur sur <http://localhost:4041>
+
+A noter que le driver doit etre dans l'état `Running`. Ce qui est le cas s’il est lancé en tant que daemon.
+
+La tache `CreateTable` durant généralement plusieurs minutes, il est aussi possible d'accéder à son interface durant sont exécution :  
+
+![](.README_images/sparkui1.png)
+
 ### Fonctionnement local
 
 Durant les phases de mise au point, afin de raccourcir le cycle de test, il peut être plus simple de tester les différents modules hors d'un contexte Kubernetes. 
@@ -578,11 +608,14 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 - Etude YuniKorn
 - Access (beeline, JDBC, spark Thrift server)
 - Jupyter notebook
-- https://www.querybook.org/  
+- [querybook](https://www.querybook.org/)  
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).  
 - HDFS on kubernetes ?
+- Ozone  
 - Trouver un opérateur S3 pour gestion des buckets
+- Test de réslience / chaos monkey
+
 
 
 

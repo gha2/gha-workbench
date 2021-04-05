@@ -39,7 +39,7 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 ./submit-local.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gharaw1 --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123
 
-./submit-local.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+./submit-local.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "SELECT actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src FROM _src_"
 
 As S3 connection parameters are now in spark-submit:
 
@@ -50,7 +50,21 @@ As S3 connection parameters are now in spark-submit:
 --dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/src={{year}}-{{month}}-{{day}}-{{hour}}"
 
 ./submit.sh CreateTable --metastore thrift://tcp1.shared1:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
---select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"
+--select "SELECT actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src FROM _src_"
+
+Test another partitionning
+
+./submit.sh Json2Parquet --appName Json2Parquet2 --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+
+
+./submit.sh Json2Parquet --appName Json2Parquet2 --backDays 5 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+
+
+
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-2/raw --database gha_dm_2 --table t1 --dstBucket gha-dm-2 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
 
 
 # Image building
@@ -81,4 +95,6 @@ https://www.margo-group.com/fr/actualite/tutoriel-delta-lake-premiere-prise-en-m
 https://stackoverflow.com/questions/61301704/how-to-run-apache-spark-with-s3-minio-secured-with-self-signed-certificate
 
 https://engineering.linkedin.com/blog/2020/open-sourcing-kube2hadoop
+
+https://towardsdatascience.com/jupyter-notebook-spark-on-kubernetes-880af7e06351
 
