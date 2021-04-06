@@ -67,7 +67,7 @@ Les détails du format de stockage seront décrit ultérieurement.
 
 Ce POC est déployé sur un cluster Kubernetes installé en utilisant [kubespray](https://github.com/kubernetes-sigs/kubespray). Même si ce déploiement est en pratique effectué sur une infrastructure de virtualisation, il est très proche d'un déploiement 'bare metal'.
 
-RBAC et les PodSecurityPolicy sont activées.
+`RBAC` et les `PodSecurityPolicy` sont activés.
 
 ### ArgoCD 
 
@@ -220,9 +220,11 @@ Son utilisation effective est détaillée plus bas.
 
 `CreateTable` est un autre module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
 
-Son objet est de générer une nouvelle table à partir d'une requête effectuée sur la table principale (Générée par `Json2Parquet`). Pour cela, un paramètre permet de passer une clause 'select'. Par exemple : 
+Son objet est de générer une nouvelle table à partir d'une requête effectuée sur la table principale (Générée par `Json2Parquet`). Pour cela, un paramètre permet de passer une requète qui sera inséré dans un CTAS (CreateTableAsSelect). Par exemple : 
 
-`--select "actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src"`
+`--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"`
+
+`_src_` étant par convention le nom identifiant la table source.
 
 La table ainsi créée est référencée comme table externe dans le metastore Hive. Elle est régénérée complétement à chaque opération.
 
@@ -231,9 +233,9 @@ Un extrait du code décrivant l'opération principale :
 Dataset<Row> df = spark.read().load(parameters.getSrcPath());
 df.createOrReplaceTempView("_src_");
 spark.sql(String.format("DROP TABLE IF EXISTS %s.%s", parameters.getDatabase(), parameters.getTable() ));
-spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION 's3a://%s/%s' AS SELECT %s FROM _src_ "
+spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION 's3a://%s/%s' AS %s "
         , parameters.getDatabase(), parameters.getTable()
-        , parameters.getDatabase(), parameters.getTable()
+        , parameters.getDstBucket(), parameters.getTable()
         , parameters.getSelect()
 ));
 ```
@@ -242,12 +244,12 @@ spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION
 
 ### Docker image registry
 
-Pour la bonne mise en oeuvre de ce POC, il est nécessaire de construite des images docker, qui devront ensuite êtres déployées dans le ou les clusters cible. 
+Pour la mise en oeuvre de ce POC, il est nécessaire de construite des images docker, qui devront ensuite êtres déployées dans le ou les clusters cible. 
 
 Pour cela, le plus simple est d'utiliser une 'Container Registry' publique, telle que Docker Hub. 
 Toutefois, les récentes limitations de celui-ci, en termes de nombre de requètes ont conduit à trouver une alternative.
 
-Pour ce POC, on utilisera donc la solution (gratuite) fournie par GitLab. 
+Pour ce POC, il a été utilisé la solution (gratuite) fournie par GitLab. 
 
 ### Hive Metastore
 
@@ -295,7 +297,7 @@ Ce déploiement contient trois ressources :
 
 ### Déploiement de l'arborescence Spark (En local)
 
-L'ensemble des scripts et autres fichiers de configuration qui sont utilisé dans la suite de ce document sont regroupé dans le repository <https://github.com/gha2/gha-workbench>. Le plus simple est donc de le cloner sur votre système, et de se placer à sa racine.
+L'ensemble des scripts et autres fichiers de configuration qui sont utilisé dans la suite de ce document sont regroupé dans le repository <https://github.com/gha2/gha-workbench>. Si vous souhaitez reproduire ce POC dans votre contexte, clonez le sur votre système, et de se placez vous à sa racine.
 
 Il est d'abord nécessaire de déployer une arborescence Spark, pour deux usages :
 
@@ -432,7 +434,7 @@ Ce script va :
 - Associer ce role au compte de service
 - Générer localement un fichier de type 'kubconfig' permettant la connexion au cluster sous ce même compte de service. 
 
-Bien sur, `kubectl` doit etres configuré pour accéder au cluster cible, avec les droits d'administration.
+Lors du lancement de ce script, `kubectl` doit etres configuré pour accéder au cluster cible, avec les droits d'administration.
 
 Voici le résultat de l'exécution de ce script :
 
@@ -462,8 +464,8 @@ Les points particuliers à noter :
 - Ce script accepte en premier paramètre le nom de classe à lancer (`Json2Parquet` ou `CreateTable` dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
 - La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
 - Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (`gha2spark-0.1.0-uber.jar` dans notre cas) passé avec l'option `file://...`.
-- Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est ici pertinente que parce que les jobs Spark et Minio sont sur le même cluster K8S).
-- Le Launcher va utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark lancés par ce même launcher.
+- Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est valable que parce que les jobs Spark et Minio sont sur le même cluster K8S).
+- Le Launcher va utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark.
 
 #### Exemples d'utilisation
 
@@ -476,7 +478,7 @@ Voici un exemple de lancement permettant de convertir un fichier du datalake pri
 --dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
-Comme évoqué précédemment, la commande Json2Parquet travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition parquet correspondante.
+Comme évoqué précédemment, la commande `Json2Parquet` travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition correspondante.
 
 La commande suivante lance maintenant la commande `Json2Parquet` sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
 
@@ -503,10 +505,17 @@ time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9
  FROM _src_ ORDER BY repo"
 ```
 
+Il est aussi possible d'introduire une sélection :
+
+```
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t3 --dstBucket gha-dm-1 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
+ FROM _src_ WHERE year='2021' AND month='04' AND day='06' ORDER BY repo"
+```
 
 > As the metastore is accessed only from the spark containers, internal (Kubernetes service) address can be provided.
 
-On peut vérifier la bonne creation de cette table en utilisant un 'spark-shell' local :
+On peut vérifier la bonne création de cette table en utilisant un `spark-shell` local :
 
 > Pour que le `spark-shell` puisse accéder au metastore, il faut que la valeur de `spark.hive.metastore.uris` dans le fichier `spark-3.1.1/conf/spark-defaults.conf` soit configuré sur un point d'accès externe au metastore. Comme le protocole `thrift` n'est pas supporté par l'ingress controller, ce point d'accès devra est une IP attribuée à un load balancer.
 
@@ -533,30 +542,30 @@ scala> spark.sql("show tables in gha_dm_1;").show
 scala> spark.sql("SELECT * FROM gha_dm_1.t1 LIMIT 20;").show
 21/03/31 23:11:13 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
 21/03/31 23:11:14 WARN AmazonHttpClient: SSL Certificate checking for endpoints has been explicitly disabled.
-+---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
-|          actor|  actor_display|          org|                repo|                type| action|          src|
-+---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
-|dependabot[bot]|     dependabot|         null|mrDevIll/natour-a...|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|llavenovemiel/sti...|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|linling98/304CEM_...|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|weymoz/singapoure...|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|jonsoku2/all_reac...|         CreateEvent|   null|2021-03-31-00|
-|  Nukukoricchio|  Nukukoricchio|         null|Nukukoricchio/Piazza|           PushEvent|   null|2021-03-31-00|
-|        ptarjan|        ptarjan|         null|ptarjan/rules_docker|         CreateEvent|   null|2021-03-31-00|
-|JailtonJunior94|JailtonJunior94|         null|JailtonJunior94/f...|           PushEvent|   null|2021-03-31-00|
-|        Draylar|        Draylar|         null|      Draylar/fabric|           PushEvent|   null|2021-03-31-00|
-|    vinisalazar|    vinisalazar|  swcarpentry|swcarpentry/pytho...|PullRequestReview...|created|2021-03-31-00|
-|  renovate[bot]|       renovate|asecurityteam|asecurityteam/aws...|           PushEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|rkesters/baseWebF...|    PullRequestEvent| opened|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|pattyouwehand/gre...|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|adirgil/MoonSite-...|    PullRequestEvent| opened|2021-03-31-00|
-|breakingheatmap|breakingheatmap|         null|breakingheatmap/b...|           PushEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|nicobytes/codelab...|    PullRequestEvent| opened|2021-03-31-00|
-|    vinisalazar|    vinisalazar|  swcarpentry|swcarpentry/pytho...|PullRequestReview...|created|2021-03-31-00|
-|     tfttesting|     tfttesting|         null|tfttesting/RYvWQo...|         IssuesEvent| opened|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|    smile-j/test-vue|         CreateEvent|   null|2021-03-31-00|
-|dependabot[bot]|     dependabot|         null|mrDevIll/natour-a...|    PullRequestEvent| opened|2021-03-31-00|
-+---------------+---------------+-------------+--------------------+--------------------+-------+-------------+
++----+-----+---+----+--------------------+--------------------+-----------------+--------------------+---------+------+
+|year|month|day|hour|               actor|       actor_display|              org|                repo|     type|action|
++----+-----+---+----+--------------------+--------------------+-----------------+--------------------+---------+------+
+|2021|    4|  3|   6| albertoabellagarcia| albertoabellagarcia|smart-data-models|smart-data-models...|PushEvent|  null|
+|2021|    4|  3|   6|          ypravesh96|          ypravesh96|             null|   ypravesh96/dayone|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx21|         myreaderx21|             null|   myreaderx21/cdn31|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx16|         myreaderx16|             null|   myreaderx16/cdn62|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx24|         myreaderx24|             null|   myreaderx24/cdn10|PushEvent|  null|
+|2021|    4|  3|   6|           myreaderx|           myreaderx|             null|      myreaderx/cdn8|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx29|         myreaderx29|             null|   myreaderx29/cdn84|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx12|         myreaderx12|             null|   myreaderx12/cdn55|PushEvent|  null|
+|2021|    4|  3|   6|           jinmanshe|           jinmanshe|             null| jinmanshe/qimanshe1|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx30|         myreaderx30|             null|   myreaderx30/cdn86|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx11|         myreaderx11|             null|   myreaderx11/cdn82|PushEvent|  null|
+|2021|    4|  3|   6|Pete-PlaytimeSolu...|Pete-PlaytimeSolu...|playtimesolutions|playtimesolutions...|PushEvent|  null|
+|2021|    4|  3|   6|           myreaderx|           myreaderx|             null|     myreaderx/cdn29|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx33|         myreaderx33|             null|   myreaderx33/cdn17|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx19|         myreaderx19|             null|   myreaderx19/cdn15|PushEvent|  null|
+|2021|    4|  3|   6|           hohograce|           hohograce|             null|hohograce/FoodSafety|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx18|         myreaderx18|             null|   myreaderx18/cdn26|PushEvent|  null|
+|2021|    4|  3|   6|          myreaderx2|          myreaderx2|             null|    myreaderx2/cdn22|PushEvent|  null|
+|2021|    4|  3|   6| github-actions[bot]|      github-actions|             null| Babelovo/auto_green|PushEvent|  null|
+|2021|    4|  3|   6|         myreaderx32|         myreaderx32|             null|   myreaderx32/cdn75|PushEvent|  null|
++----+-----+---+----+--------------------+--------------------+-----------------+--------------------+---------+------+
 
 scala>
 ```
@@ -595,6 +604,8 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 
 ## Next steps
 
+### Production ready criteria 
+
 - spark operator
 - Benchmark (TPC-DS, ....)
 - Monitoring  
@@ -603,18 +614,21 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 - Setup history server
 - Gestion des ressources RAM/CPU
 - Gestion des droits S3
+- Jupyter notebook
+- [Securisation](http://spark.apache.org/docs/latest/security.html).
+- Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).
+- Test de réslience / chaos monkey
+
+### Evolution
+
 - Deployement AWS
 - Etude DeltaLake
 - Etude YuniKorn
 - Access (beeline, JDBC, spark Thrift server)
-- Jupyter notebook
 - [querybook](https://www.querybook.org/)  
-- [Securisation](http://spark.apache.org/docs/latest/security.html).
-- Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).  
 - HDFS on kubernetes ?
 - Ozone  
 - Trouver un opérateur S3 pour gestion des buckets
-- Test de réslience / chaos monkey
 
 
 

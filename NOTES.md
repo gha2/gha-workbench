@@ -67,6 +67,23 @@ time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9
 --select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
 
 
+
+
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-2/raw --database gha_dm_2 --table t4 --dstBucket gha-dm-2 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_ WHERE year='2021' AND month='04' AND day='06' ORDER BY repo" --waitOnEnd 600
+
+
+time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-2/raw --database gha_dm_2 --table t5 --dstBucket gha-dm-2 \
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_ WHERE year='2021' AND month='04' AND day='06'" --waitOnEnd 600
+
+
+
+time ./submit.sh Count --srcPath s3a://gha-secondary-2/raw --waitOnEnd 0
+time ./submit.sh Count --srcPath s3a://gha-dm-2/t5 --waitOnEnd 0
+
+
+
+
 # Image building
 
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
