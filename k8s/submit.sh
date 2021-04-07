@@ -8,11 +8,15 @@ if [ -z "$1" ]; then echo "Missing parameter (Json2parquet or CreateTable)"; exi
 ACTION_CLASS=$1
 shift
 
+APP_NAME=$1
+shift
+
 
 if [ -z "${NAMESPACE}" ]; then export NAMESPACE=spark; fi
 if [ -z "${SERVICE_ACCOUNT}" ]; then export SERVICE_ACCOUNT=spark; fi
 if [ -z "${IMAGE_PULL_POLICY}" ]; then export IMAGE_PULL_POLICY=Always; fi
-if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.ingress.kspray1.ctb01/"; fi
+#if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.ingress.kspray1.ctb01/"; fi
+if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.shared1/"; fi
 
 
 if [ -z "${KUBECONFIG}" ]; then export KUBECONFIG=~/.kube/config; fi
@@ -41,7 +45,7 @@ export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
 
 cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --deploy-mode cluster \
---name ${ACTION_CLASS} \
+--name ${APP_NAME} \
 --class gha2spark.${ACTION_CLASS} \
 --conf spark.kubernetes.file.upload.path=s3a://spark/shared \
 --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
@@ -56,7 +60,7 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.kubernetes.namespace=${NAMESPACE} \
 --conf spark.kubernetes.container.image=registry.gitlab.com/gha1/spark \
 --conf spark.kubernetes.container.image.pullPolicy=${IMAGE_PULL_POLICY} \
-file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar "$@"
+file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar --appName ${APP_NAME} "$@"
 
 #local:////opt/spark/examples/jars/spark-examples_2.12-3.1.1.jar
 

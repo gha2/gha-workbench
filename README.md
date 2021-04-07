@@ -461,7 +461,7 @@ Dans le cadre de ce POC, un wrapper est utliser pour mutualiser la plupart de ce
 Les points particuliers à noter :
 
 - Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
-- Ce script accepte en premier paramètre le nom de classe à lancer (`Json2Parquet` ou `CreateTable` dans notre cas). Les autre paramètres sont ensuite passés à cette classe.
+- Ce script requiert en premier paramètre le nom de classe à lancer (`Json2Parquet`, `CreateTable` ou `Count` dans notre cas) et en second paramètre le nom de l'application. Les autre paramètres sont ensuite passés à cette classe.
 - La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
 - Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (`gha2spark-0.1.0-uber.jar` dans notre cas) passé avec l'option `file://...`.
 - Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est valable que parce que les jobs Spark et Minio sont sur le même cluster K8S).
@@ -474,8 +474,8 @@ Les points particuliers à noter :
 Voici un exemple de lancement permettant de convertir un fichier du datalake primaire (JSON) vers le secondaire (Parquet) :
 
 ```
-./submit.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
---dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+./submit.sh Json2Parquet json2parquet --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
 Comme évoqué précédemment, la commande `Json2Parquet` travaille en reconciliation source / destination. Cette commande ne sera donc effective que si au moins un fichier JSON n'a pas encore sa partition correspondante.
@@ -483,8 +483,8 @@ Comme évoqué précédemment, la commande `Json2Parquet` travaille en reconcili
 La commande suivante lance maintenant la commande `Json2Parquet` sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
 
 ```
-./submit.sh Json2Parquet --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
---dstBucketFormat gha-secondary-2 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+./submit.sh Json2Parquet j2p-daemon --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
+--dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
 On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alternative étant dans ce cas d'ajouter l'option `--conf spark.yarn.submit.waitAppCompletion=false` dans le `submit.sh`.
@@ -492,7 +492,8 @@ On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alte
 On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table `t1`, référencée dans une database `gha_dm_1` dans le metastore :
 
 ```
-time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
+time ./submit.sh CreateTable create-t1 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
+--database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
 --select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
  FROM _src_"
 ```
@@ -500,7 +501,8 @@ time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9
 Ou bien, si l'on souhaite avoir un résultat ordonné : 
 
 ```
-time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t2 --dstBucket gha-dm-1 \
+time ./submit.sh CreateTable create-t2 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
+--database gha_dm_1 --table t2 --dstBucket gha-dm-1 \
 --select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
  FROM _src_ ORDER BY repo"
 ```
@@ -508,7 +510,8 @@ time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9
 Il est aussi possible d'introduire une sélection :
 
 ```
-time ./submit.sh CreateTable --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw --database gha_dm_1 --table t3 --dstBucket gha-dm-1 \
+time ./submit.sh CreateTable create-t3 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
+--database gha_dm_1 --table t3 --dstBucket gha-dm-1 \
 --select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
  FROM _src_ WHERE year='2021' AND month='04' AND day='06' ORDER BY repo"
 ```
@@ -585,7 +588,7 @@ Lors de l'exécution d'un job spark, le driver offre un front-end web permettant
 Il est donc possible d'avoir accès à cette interface avec la commande `port-forward`. Par exemple :
 
 ```
-kubectl -n spark port-forward json2parquet-8e7b35789c1c9f50-driver 4041:4040
+kubectl -n spark port-forward j2p-daemon-8e7b35789c1c9f50-driver 4041:4040
 ```
 
 On pourra ensuite pointer son navigateur sur <http://localhost:4041>
@@ -615,13 +618,15 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 - Gestion des ressources RAM/CPU
 - Gestion des droits S3
 - Jupyter notebook
+- Apache Livy
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).
-- Test de réslience / chaos monkey
+- Test de résilience / chaos monkey
 
 ### Evolution
 
-- Deployement AWS
+- Spark Streaming
+- Déploiement AWS (S3 de référence)
 - Etude DeltaLake
 - Etude YuniKorn
 - Access (beeline, JDBC, spark Thrift server)
