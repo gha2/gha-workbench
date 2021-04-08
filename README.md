@@ -28,11 +28,14 @@
   - [Configuration de l'arborescence Spark locale](#configuration-de-larborescence-spark-locale)
   - [Generation de l'image Spark](#generation-de-limage-spark)
   - [Namespace and Account setup](#namespace-and-account-setup)
+  - [S3 storage setup](#s3-storage-setup)
   - [Le script submit.sh](#le-script-submitsh)
     - [Exemples d'utilisation](#exemples-dutilisation)
   - [Spark UI front end](#spark-ui-front-end)
   - [Fonctionnement local](#fonctionnement-local)
 - [Next steps](#next-steps)
+  - [Production ready criteria](#production-ready-criteria)
+  - [Evolution](#evolution)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -195,7 +198,7 @@ L'objet de cette application est donc de transformer les données brutes, stock�
 
 La logique de `Json2Parquet` est un peu équivalente à celle de `gha2Minio`.
 
-Les données résultantes sont stockées sous la forme d'une table parquet partitionné par un identifiant de fichier source
+Les données résultantes sont stockées sous la forme d'une table parquet partitionnée par années/mois/jours
 
 ![](.README_images/gha-secondary-1.png)
 
@@ -208,13 +211,15 @@ Dataset<Row> df = spark.read().format("json").option("inferSchema", "true").load
 df.write().mode(SaveMode.Overwrite).save(String.format("s3a://%s/%s", dstBucket, dstObject));
 ```
 
+`dstObject` est un paramètre applicatif dont la valeur sera : `"raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"`
+
 `Json2Parquet` est un module de l'application spark/java [gha2spark](https://github.com/gha2/gha2spark).
 
-Les patterns des noms de fichier d'entrés et de sortie sont configurable, ainsi que de nombreux paramètres de fonctionnement (Périodicité, durée de remonté dans le passé, limitation du nombre de transformation par itération, etc...).
+Les patterns des noms de fichier d'entré et de sortie sont configurable, ainsi que de nombreux paramètres de fonctionnement (Périodicité, durée de remonté dans le passé, limitation du nombre de transformation par itération, etc...).
 
-`Json2Parquet` n'interagit pas avec le Metastore Hive et est indépendant de celui-ci.
+`Json2Parquet` n'interagis pas avec le Metastore Hive et est indépendant de celui-ci.
 
-Son utilisation effective est détaillée plus bas.
+Son utilisation effective est illustrée plus bas.
 
 ### CreateTable
 
@@ -229,6 +234,7 @@ Son objet est de générer une nouvelle table à partir d'une requête effectué
 La table ainsi créée est référencée comme table externe dans le metastore Hive. Elle est régénérée complétement à chaque opération.
 
 Un extrait du code décrivant l'opération principale :
+
 ```
 Dataset<Row> df = spark.read().load(parameters.getSrcPath());
 df.createOrReplaceTempView("_src_");
@@ -380,6 +386,8 @@ spark.hadoop.fs.s3a.path.style.access true
 
 Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
 
+> Si l'on souhaite plus d'information sur cette configuration, notamment sur la manière dont l'écriture sur S3 s'effectue, on pourra se reporter à ce lien : <https://hadoop.apache.org/docs/r3.1.1/hadoop-aws/tools/hadoop-aws/committers.html>
+
 - Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
   - Ajouter une ligne `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant le lancement des exécutables. Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui est le cas dans le cadre de notre POC pour l'accès à Minio.
   - Ajouter une option `--verbose` au lancement du driver. Ceci est optionnel, et permet l'affichage des valeurs retenues pour la configuration.
@@ -449,6 +457,26 @@ export KUBECONFIG=/Users/sa/dev/g6/git/gha-workbench/k8s/kubeconfig.spark.kspray
 ```
 
 On peut donc couper/coller la dernière ligne pour s'identifier sous le compte de service 'spark'
+
+### S3 storage setup
+
+Il est nécéssaire de créer un bucket `spark` qui aura deux usages :
+
+- Etre la zone d'échange permettant de rendre accessible le jar applicatif par les containers
+- Stocker les `event logs` spark, en vue de leur excploitation par le spark history server.
+
+Pour cela, avec la commande `mc`, de `minio` :
+
+```
+mc mb minio1.shared1/spark
+touch _empty_
+mc cp empty  minio1.shared1/spark/eventlogs/empty
+rm _empty_
+```
+
+Bien sur, `minio1.shared1` devra ici être remplacé par le point d'accès minio correct.
+
+> Comme la logique de minio ne permet pas la création explicite d'un répertoire vide, on aura recours à la copie d'un fichier vide.
 
 ### Le script submit.sh
 
@@ -607,32 +635,27 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 
 ## Next steps
 
-### Production ready criteria 
-
-- spark operator
+- Setup history server
+- [spark operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
 - Benchmark (TPC-DS, ....)
 - Monitoring  
-- Etude de l'utilisation du stockage (Spilling)
+- Etude de l'utilisation du stockage (Shuffle/Spilling)
 - Node affinity
-- Setup history server
 - Gestion des ressources RAM/CPU
 - Gestion des droits S3
 - Jupyter notebook
-- Apache Livy
+- [Apache Livy](https://livy.incubator.apache.org/)
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).
 - Test de résilience / chaos monkey
-
-### Evolution
-
 - Spark Streaming
 - Déploiement AWS (S3 de référence)
-- Etude DeltaLake
-- Etude YuniKorn
+- Etude [DeltaLake](https://delta.io/)
+- Etude [YuniKorn](http://yunikorn.apache.org/)
 - Access (beeline, JDBC, spark Thrift server)
 - [querybook](https://www.querybook.org/)  
 - HDFS on kubernetes ?
-- Ozone  
+- [Ozone](https://ozone.apache.org/)  
 - Trouver un opérateur S3 pour gestion des buckets
 
 

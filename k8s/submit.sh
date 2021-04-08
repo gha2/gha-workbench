@@ -55,11 +55,13 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.hadoop.fs.s3a.access.key=minio \
 --conf spark.hadoop.fs.s3a.secret.key=minio123 \
 --conf spark.hadoop.fs.s3a.path.style.access=true \
---conf spark.executor.instances=5 \
+--conf spark.executor.instances=3 \
 --conf spark.kubernetes.authenticate.driver.serviceAccountName=${SERVICE_ACCOUNT} \
 --conf spark.kubernetes.namespace=${NAMESPACE} \
 --conf spark.kubernetes.container.image=registry.gitlab.com/gha1/spark \
 --conf spark.kubernetes.container.image.pullPolicy=${IMAGE_PULL_POLICY} \
+--conf spark.eventLog.enabled=true \
+--conf spark.eventLog.dir=s3a://spark/eventlogs \
 file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar --appName ${APP_NAME} "$@"
 
 #local:////opt/spark/examples/jars/spark-examples_2.12-3.1.1.jar
@@ -72,6 +74,9 @@ file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar --appName ${APP_NAME} "$@"
 #--driver-java-options "-Dlog4j.configuration=file:../log4j.xml -Dcom.amazonaws.sdk.disableCertChecking=true" \
 #--conf "spark.driver.extraJavaOptions=-Dcom.amazonaws.sdk.disableCertChecking=true" \
 #--conf "spark.executor.extraJavaOptions=-Dcom.amazonaws.sdk.disableCertChecking=true" \
+
+#--conf spark.eventLog.rolling.enabled=true \
+#--conf spark.eventLog.rolling.maxFileSize=128m \
 
 
 

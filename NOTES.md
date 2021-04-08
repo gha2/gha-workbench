@@ -103,3 +103,7 @@ https://engineering.linkedin.com/blog/2020/open-sourcing-kube2hadoop
 
 https://towardsdatascience.com/jupyter-notebook-spark-on-kubernetes-880af7e06351
 
+https://medium.com/@carlosescura/run-spark-history-server-on-kubernetes-using-helm-7b03bfed20f6
+https://medium.com/@GusCavanaugh/how-to-install-spark-history-server-on-aws-eks-with-helm-85e2d3f356f7
+
+https://github.com/JahstreetOrg/spark-on-kubernetes-helm
