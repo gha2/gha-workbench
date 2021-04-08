@@ -64,12 +64,8 @@ time ./submit.sh CreateTable create-t2 --metastore thrift://metastore.hive-metas
 --select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_ WHERE year='2021' AND month='04' ORDER BY repo"
 
 
-
-
-time ./submit.sh Count --srcPath s3a://gha-secondary-1/raw --waitOnEnd 0
-time ./submit.sh Count --srcPath s3a://gha-dm-1/t2 --waitOnEnd 0
-
-
+time ./submit.sh Count count-all --srcPath s3a://gha-secondary-1/raw --waitOnEnd 0
+time ./submit.sh Count count-t2 --srcPath s3a://gha-dm-1/t2 --waitOnEnd 0
 
 
 # Image building
@@ -107,3 +103,4 @@ https://medium.com/@carlosescura/run-spark-history-server-on-kubernetes-using-he
 https://medium.com/@GusCavanaugh/how-to-install-spark-history-server-on-aws-eks-with-helm-85e2d3f356f7
 
 https://github.com/JahstreetOrg/spark-on-kubernetes-helm
+https://stackoverflow.com/questions/39906536/spark-history-server-on-s3a-filesystem-classnotfoundexception

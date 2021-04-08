@@ -14,6 +14,7 @@
   - [Spark](#spark)
     - [Spark operateur](#spark-operateur)
   - [Hive Metastore](#hive-metastore)
+  - [Spark history server](#spark-history-server)
   - [Postgresql](#postgresql)
 - [Composant applicatifs](#composant-applicatifs)
   - [gha2minio](#gha2minio)
@@ -29,13 +30,12 @@
   - [Generation de l'image Spark](#generation-de-limage-spark)
   - [Namespace and Account setup](#namespace-and-account-setup)
   - [S3 storage setup](#s3-storage-setup)
+  - [Le Spark History Server](#le-spark-history-server)
   - [Le script submit.sh](#le-script-submitsh)
     - [Exemples d'utilisation](#exemples-dutilisation)
   - [Spark UI front end](#spark-ui-front-end)
   - [Fonctionnement local](#fonctionnement-local)
 - [Next steps](#next-steps)
-  - [Production ready criteria](#production-ready-criteria)
-  - [Evolution](#evolution)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -127,6 +127,14 @@ Un projet de google [Spark Operateur](https://github.com/GoogleCloudPlatform/spa
 Le Metastore Hive permet un référencement des métadonnées (Database, Tables, Column, etc...). Il est implémenté sous la forme d'un container, dont la construction est détaillé plus bas.
 
 Il requiert un SGBD tel que PostgreSQL, Oracle ou MySQL. 
+
+### Spark history server
+
+Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'exécution des tâches. Ce front-end est géré par le `driver` spark, ce qui implique qu'il disparaisse à la fin du traitement. 
+
+Néanmoins, à le fin de ce traitement, les journaux d'événement Spark sont sauvegardé dans un bucket S3. Et le `spark history server` permet de les visualiser.
+
+Ce server est bien sur containerisé et accessible au travers d'un ingress controller.
 
 ### Postgresql
 
@@ -389,10 +397,11 @@ Les quatre dernières lignes devront être activées (dé-commentées) si l'on s
 > Si l'on souhaite plus d'information sur cette configuration, notamment sur la manière dont l'écriture sur S3 s'effectue, on pourra se reporter à ce lien : <https://hadoop.apache.org/docs/r3.1.1/hadoop-aws/tools/hadoop-aws/committers.html>
 
 - Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
+  
   - Ajouter une ligne `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant le lancement des exécutables. Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui est le cas dans le cadre de notre POC pour l'accès à Minio.
   - Ajouter une option `--verbose` au lancement du driver. Ceci est optionnel, et permet l'affichage des valeurs retenues pour la configuration.
   
-  Voici un extrait de ce fichier avec les modifications.   
+  Voici un extrait de ce fichier avec les modifications :
 
 ```
 .....
@@ -478,6 +487,24 @@ Bien sur, `minio1.shared1` devra ici être remplacé par le point d'accès minio
 
 > Comme la logique de minio ne permet pas la création explicite d'un répertoire vide, on aura recours à la copie d'un fichier vide.
 
+### Le Spark History Server
+
+Voici le Dockerfile permettant la création de l'image pour le Spark history server :
+
+```
+FROM registry.gitlab.com/gha1/spark:latest
+
+USER root
+
+RUN adduser --uid 185 spark
+
+USER 185
+```
+
+> Pour des raisons obscures, l'application HistoryServer requiert que l'utilisateur soit nommé, alors que l'image Spark standard se contente d'un `uid`.
+
+On trouvera une Chart Helm de déploiement ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/spark/history-server>
+
 ### Le script submit.sh
 
 Traditionnellement, la commande `spark-submit` nécessite un nombre important de paramètres, permettant de s'adapter au contexte.
@@ -497,7 +524,7 @@ Les points particuliers à noter :
 
 #### Exemples d'utilisation
 
-> Il est imperatif de configurer `spark-3.1.1/conf/spark-defaults.conf` ET `submit.sh` avec les valeurs d'accès au stockage S3. 
+> Il est impératif de configurer `spark-3.1.1/conf/spark-defaults.conf` ET `submit.sh` avec les valeurs d'accès au stockage S3. 
 
 Voici un exemple de lancement permettant de convertir un fichier du datalake primaire (JSON) vers le secondaire (Parquet) :
 
@@ -511,7 +538,7 @@ Comme évoqué précédemment, la commande `Json2Parquet` travaille en reconcili
 La commande suivante lance maintenant la commande `Json2Parquet` sous forme de daemon, qui, toute les 30 secondes, comparera source et destination et convertira tous les fichiers source non encore traités. 
 
 ```
-./submit.sh Json2Parquet j2p-daemon --backDays 0 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
+./submit.sh Json2Parquet j2p-daemon --backDays 9 --waitSeconds 30 --srcBucketFormat gha-primary-1 \
 --dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
 ```
 
@@ -520,31 +547,22 @@ On pourra quitter la commande de lancement sans conséquence avec Ctrl-C. L'alte
 On peut maintenant valider le bon fonctionnement de la commande `CreateTable`, en créant une table `t1`, référencée dans une database `gha_dm_1` dans le metastore :
 
 ```
-time ./submit.sh CreateTable create-t1 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
+time ./submit.sh CreateTable create-t1 --metastore thrift://metastore.spark-system.svc:9083 --srcPath s3a://gha-secondary-1/raw \
 --database gha_dm_1 --table t1 --dstBucket gha-dm-1 \
---select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
- FROM _src_"
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_ WHERE year='2021' AND month='03' AND day='30' AND hour='00'"
 ```
+
+> As the metastore is accessed only from the spark containers, internal (Kubernetes service) address can be provided.
+
+> La clause WHERE permet de ne sélectionner qu'une journée, afin d'avoir une durée d'execution raisonnable.
 
 Ou bien, si l'on souhaite avoir un résultat ordonné : 
 
 ```
-time ./submit.sh CreateTable create-t2 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
+time ./submit.sh CreateTable create-t2 --metastore thrift://metastore.spark-system.svc:9083 --srcPath s3a://gha-secondary-1/raw \
 --database gha_dm_1 --table t2 --dstBucket gha-dm-1 \
---select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
- FROM _src_ ORDER BY repo"
+--select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_ WHERE year='2021' AND month='03' AND day='30' AND hour='00' ORDER BY repo"
 ```
-
-Il est aussi possible d'introduire une sélection :
-
-```
-time ./submit.sh CreateTable create-t3 --metastore thrift://metastore.hive-metastore.svc:9083 --srcPath s3a://gha-secondary-1/raw \
---database gha_dm_1 --table t3 --dstBucket gha-dm-1 \
---select "SELECT year, month, day, hour, actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action FROM _src_"
- FROM _src_ WHERE year='2021' AND month='04' AND day='06' ORDER BY repo"
-```
-
-> As the metastore is accessed only from the spark containers, internal (Kubernetes service) address can be provided.
 
 On peut vérifier la bonne création de cette table en utilisant un `spark-shell` local :
 
@@ -611,7 +629,9 @@ Trois conditions pour que cela fonctionne :
 
 ### Spark UI front end
 
-Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'éxécution des tâches. Cette interface est accessible sur le port 404 du container.
+Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'éxécution des tâches. 
+
+Cette interface est accessible sur le port 4040 du container.
 
 Il est donc possible d'avoir accès à cette interface avec la commande `port-forward`. Par exemple :
 
@@ -626,6 +646,8 @@ A noter que le driver doit etre dans l'état `Running`. Ce qui est le cas s’il
 La tache `CreateTable` durant généralement plusieurs minutes, il est aussi possible d'accéder à son interface durant sont exécution :  
 
 ![](.README_images/sparkui1.png)
+
+Après la fin du traitement, le container passe dans l'état `completed`. Les journaux d'événement sont alors sauvegarder et sont maintenant accessible au travers du `Spark history server`, déployé à cet effet.
 
 ### Fonctionnement local
 

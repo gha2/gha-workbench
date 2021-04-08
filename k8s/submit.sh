@@ -15,8 +15,8 @@ shift
 if [ -z "${NAMESPACE}" ]; then export NAMESPACE=spark; fi
 if [ -z "${SERVICE_ACCOUNT}" ]; then export SERVICE_ACCOUNT=spark; fi
 if [ -z "${IMAGE_PULL_POLICY}" ]; then export IMAGE_PULL_POLICY=Always; fi
-#if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.ingress.kspray1.ctb01/"; fi
-if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.shared1/"; fi
+if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.ingress.kspray1.ctb01/"; fi
+#if [ -z "${S3_ENDOINT}" ]; then export S3_ENDOINT="https://minio1.shared1/"; fi
 
 
 if [ -z "${KUBECONFIG}" ]; then export KUBECONFIG=~/.kube/config; fi
@@ -55,7 +55,7 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.hadoop.fs.s3a.access.key=minio \
 --conf spark.hadoop.fs.s3a.secret.key=minio123 \
 --conf spark.hadoop.fs.s3a.path.style.access=true \
---conf spark.executor.instances=3 \
+--conf spark.executor.instances=5 \
 --conf spark.kubernetes.authenticate.driver.serviceAccountName=${SERVICE_ACCOUNT} \
 --conf spark.kubernetes.namespace=${NAMESPACE} \
 --conf spark.kubernetes.container.image=registry.gitlab.com/gha1/spark \
