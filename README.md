@@ -516,11 +516,12 @@ Dans le cadre de ce POC, un wrapper est utliser pour mutualiser la plupart de ce
 Les points particuliers à noter :
 
 - Le script intègre aussi la compilation des applications Spark. Ce qui implique que le projet [gha2sprak](https://github.com/gha2/gha2spark) soit déployé au même niveau que [gha-workbench](https://github.com/gha2/gha-workbench).
-- Ce script requiert en premier paramètre le nom de classe à lancer (`Json2Parquet`, `CreateTable` ou `Count` dans notre cas) et en second paramètre le nom de l'application. Les autre paramètres sont ensuite passés à cette classe.
+- Ce script requiert en premier paramètre le nom de classe à lancer (`Json2Parquet`, `CreateTable` ou `Count` dans notre cas) et en second paramètre le nom de l'application. Les autre paramètres sont ensuite passés à la classe.
 - La commande `spark-submit` requiert que l'URL de l'API server soit passé en paramètre. Afin de simplifier l'interaction utilisateur, cette URL est automatiquement extraite du fichier pointé par $KUBECONFIG.
 - Le script intègre une commande `export JAVA_TOOL_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"`, afin de permettre l'accès à Minio en TLS avec un certificat émis  par une autorité non reconnue. Il faut noter que cela est nécéssaire à cet endroit, car le launcher lui-même vas devoir accéder au stockage S3 pour uploader le jar applicatif (`gha2spark-0.1.0-uber.jar` dans notre cas) passé avec l'option `file://...`.
 - Le fait que le stockage S3 soit accédé aussi bien par le launcher que par les containers spark impose de fournir un point d'entré accessible aussi bien de l'extérieur du cluster que depuis un Pod. (Cette remarque n'est valable que parce que les jobs Spark et Minio sont sur le même cluster K8S).
 - Le Launcher va utiliser les valeurs courantes de `spark-3.1.1/conf/spark-defaults.conf` et `spark-3.1.1/conf/log4j.properties` pour construire une ressource de type ConfigMap, qui sera utilisée par les Pod Spark.
+- Le script configure aussi les ressources allouées au driver et aux executors.
 
 #### Exemples d'utilisation
 
@@ -657,7 +658,6 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 
 ## Next steps
 
-- Setup history server
 - [spark operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
 - Benchmark (TPC-DS, ....)
 - Monitoring  

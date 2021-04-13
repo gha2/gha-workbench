@@ -60,6 +60,12 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.kubernetes.namespace=${NAMESPACE} \
 --conf spark.kubernetes.container.image=registry.gitlab.com/gha1/spark \
 --conf spark.kubernetes.container.image.pullPolicy=${IMAGE_PULL_POLICY} \
+--conf spark.kubernetes.driver.limit.cores=4 \
+--conf spark.kubernetes.executor.limit.cores=4 \
+--conf spark.kubernetes.driver.request.cores=2 \
+--conf spark.kubernetes.executor.request.cores=2 \
+--conf spark.driver.memory=4G \
+--conf spark.executor.memory=4G \
 --conf spark.eventLog.enabled=true \
 --conf spark.eventLog.dir=s3a://spark/eventlogs \
 file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar --appName ${APP_NAME} "$@"

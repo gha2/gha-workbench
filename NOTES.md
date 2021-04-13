@@ -43,6 +43,12 @@ scala> spark.sql("SELECT DISTINCT type, action FROM gha.t ORDER BY type").show()
 
 ./submit-local.sh CreateTable --s3Endpoint "https://minio1.shared1" --s3AccessKey minio --s3SecretKey minio123 --metastore thrift://tcp1.shared1:9083 --database gha --srcPath s3a://gha/raw --table t1 --select "SELECT actor.login as actor, actor.display_login as actor_display, org.login as  org, repo.name as repo, type, payload.action, src FROM _src_"
 
+./submit-local.sh Json2Parquet --backDays 0 --maxFiles 1 --waitSeconds 0 \
+--srcBucketFormat gha-primary-1 --dstBucketFormat gha-secondary-1 --dstObjectFormat "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}" \
+--s3Endpoint "https://minio1.ingress.kspray1.ctb01/" --s3AccessKey minio --s3SecretKey minio123
+
+
+
 ### Cluster
 
 time ./submit.sh Json2Parquet json2parquet1 --backDays 0 --maxFiles 1 --waitSeconds 0 --srcBucketFormat gha-primary-1 \
@@ -75,7 +81,10 @@ time ./submit.sh Count count-t2 --srcPath s3a://gha-dm-1/t2 --waitOnEnd 0
 
 # Pbs
 
+Seems fixed by increasing ressources:
 2021-03-28-05: This file hang when handled on K8S (Works when handled locally)
+Also: 2021-04-12-00
+Also: 2021-04-12-03
 
 # Links
 

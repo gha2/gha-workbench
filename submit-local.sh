@@ -15,7 +15,7 @@ fi
 
 
 cd $MYDIR/spark-3.1.1 && ./bin/spark-submit --master local \
---driver-java-options "-Dlog4j.configuration=file:../log4j.xml -Dcom.amazonaws.sdk.disableCertChecking=true" \
+--driver-java-options "-Dlog4j.configuration=file:$MYDIR/spark-3.1.1/conf/log4j.properties  -Dcom.amazonaws.sdk.disableCertChecking=true" \
 --conf "spark.executor.extraJavaOptions=-Dcom.amazonaws.sdk.disableCertChecking=true" \
 --class gha2spark.${ACTION_CLASS} $GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar "$@"
 
