@@ -79,12 +79,26 @@ time ./submit.sh Count count-t2 --srcPath s3a://gha-dm-1/t2 --waitOnEnd 0
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest push
 
-# Pbs
+docker run -it --entrypoint /bin/bash registry.gitlab.com/gha1/spark
+
+
+
+# Probleme 1
 
 Seems fixed by increasing ressources:
 2021-03-28-05: This file hang when handled on K8S (Works when handled locally)
 Also: 2021-04-12-00
 Also: 2021-04-12-03
+
+# Probleme 2
+
+After some time, the driver fail, unable to access S3/minio during a spark save operation.
+
+This can be due to the fact we always use the same spark context, and some resources may be exhausted. (This is not the usual spark pattern) 
+
+One way to solve this would be close and reopen the spark context. But this generate another issue. On close, the spark UI logs are saved in S3, referenced by the application ID. But this applicationID does not change. So, there is a conflict on second close, when saving UI logs.
+
+Solution will be to perform a full submit periodically. This can be achieved using the spark operator.
 
 # Links
 
@@ -113,3 +127,6 @@ https://medium.com/@GusCavanaugh/how-to-install-spark-history-server-on-aws-eks-
 
 https://github.com/JahstreetOrg/spark-on-kubernetes-helm
 https://stackoverflow.com/questions/39906536/spark-history-server-on-s3a-filesystem-classnotfoundexception
+
+
+https://learnk8s.io/kubernetes-secrets-in-git

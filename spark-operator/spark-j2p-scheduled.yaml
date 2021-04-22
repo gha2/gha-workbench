@@ -1,0 +1,73 @@
+#
+# Copyright 2017 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: ScheduledSparkApplication
+metadata:
+  name: spark-j2p
+  namespace: spark-operator
+spec:
+  schedule: "@every 1m"
+  concurrencyPolicy: Forbid
+  successfulRunHistoryLimit: 2
+  failedRunHistoryLimit: 3
+  template:
+    type: Scala
+    mode: cluster
+    image: "registry.gitlab.com/gha1/spark"
+    imagePullPolicy: Always
+    mainClass: "gha2spark.Json2Parquet"
+    mainApplicationFile: "s3a://spark/jars/gha2spark-0.1.0-uber.jar"
+    sparkVersion: "3.1.1"
+    restartPolicy:
+      type: Never
+    arguments:
+      - --backDays
+      - "0"
+      - --maxFiles
+      - "1"
+      - --waitSeconds
+      - "0"
+      - --srcBucketFormat
+      - gha-primary-1
+      - --dstBucketFormat
+      - gha-secondary-1
+      - --dstObjectFormat
+      - "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+    sparkConf:
+      "spark.kubernetes.file.upload.path": "s3a://spark/shared"
+      "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem"
+      "spark.hadoop.fs.s3a.fast.upload": "true"
+      "spark.hadoop.fs.s3a.endpoint": "https://minio1.shared1"
+      "spark.hadoop.fs.s3a.connection.ssl.enabled": "true"
+      "spark.hadoop.fs.s3a.access.key": "minio"
+      "spark.hadoop.fs.s3a.secret.key": "minio123"
+      "spark.hadoop.fs.s3a.path.style.access": "true"
+      "spark.eventLog.enabled": "true"
+      "spark.eventLog.dir": "s3a://spark/eventlogs"
+    driver:
+      cores: 1
+      coreLimit: "4"
+      memory: "4G"
+      labels:
+        version: "3.1.1"
+      serviceAccount: spark-operator1-spark
+    executor:
+      instances: 2
+      cores: 1
+      coreLimit: "4"
+      memory: "4G"
+      labels:
+        version: "3.1.1"
