@@ -24,8 +24,8 @@ spec:
   image: "registry.gitlab.com/gha1/spark"
   imagePullPolicy: Always
   mainClass: "gha2spark.Json2Parquet"
-  mainApplicationFile: "s3a://spark/jars/gha2spark-0.1.0-uber.jar"
-  #mainApplicationFile: "https://minio1.shared1/spark/jars/gha2spark-0.1.0-uber.jar"
+  #mainApplicationFile: "s3a://spark/jars/gha2spark-0.1.0-uber.jar"
+  mainApplicationFile: "https://minio1.shared1/spark/jars/gha2spark-0.1.0-uber.jar"
   sparkVersion: "3.1.1"
   restartPolicy:
     type: Never

@@ -79,9 +79,7 @@ time ./submit.sh Count count-t2 --srcPath s3a://gha-dm-1/t2 --waitOnEnd 0
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest build
 ./spark-3.1.1/bin/docker-image-tool.sh -r registry.gitlab.com/gha1 -t latest push
 
-docker run -it --entrypoint /bin/bash registry.gitlab.com/gha1/spark
-
-
+docker run -it --entrypoint /bin/bash --user 0 registry.gitlab.com/gha1/spark:latest
 
 # Probleme 1
 
