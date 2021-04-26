@@ -9,4 +9,6 @@ spark-3.1.1/*
 !spark-3.1.1/conf/spark-defaults.conf
 !spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh
 !spark-3.1.1/kubernetes/dockerfiles/spark/Dockerfile
+!spark-3.1.1/kubernetes/dockerfiles/spark/log4j.properties
+
 

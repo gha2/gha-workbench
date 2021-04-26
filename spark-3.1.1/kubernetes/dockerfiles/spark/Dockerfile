@@ -51,6 +51,8 @@ COPY examples /opt/spark/examples
 COPY kubernetes/tests /opt/spark/tests
 COPY data /opt/spark/data
 
+COPY conf/log4j.properties /opt/spark/log4j.properties
+
 COPY kubernetes/dockerfiles/spark/ca2.crt $JAVA_HOME/lib/security
 RUN cd $JAVA_HOME/lib/security && keytool -cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias ca2.broadsoftware.com -file ca2.crt
 

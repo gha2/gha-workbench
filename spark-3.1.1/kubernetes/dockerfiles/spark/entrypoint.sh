@@ -68,6 +68,7 @@ elif ! [ -z ${SPARK_HOME+x} ]; then
 fi
 
 # export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
+export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties"
 
 case "$1" in
   driver)
