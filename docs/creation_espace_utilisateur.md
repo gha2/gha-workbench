@@ -4,21 +4,19 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Index**
 
-  - [En mode direct](#en-mode-direct)
+- [En ligne de commande](#en-ligne-de-commande)
 - [Au travers d'ArgoCD](#au-travers-dargocd)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-
-## En mode direct
-
 Bien qu'il soit possible de déployer nos applications Spark dans le namespace par défaut, et avec une compte de type 'superadmin',
-les bonnes pratiques requièrent que l'on déploie dans un namespace dédié (Ou partagé avec d'autres applications) et à partir d'un compte limité au strict nécéssaire.
+les bonnes pratiques requièrent que l'on déploie dans un namespace dédié (Ou partagé avec d'autres applications) et à partir d'un compte avec des permissions limitées au strict nécéssaire.
 
-Créer cet environnement est l'objet du script <https://github.com/gha2/gha-workbench/blob/master/k8s/setup.sh>
+## En ligne de commande
+
+Créer un tel environnement est l'objet du script <https://github.com/gha2/gha-workbench/blob/master/k8s/setup.sh>
 
 > IMPORTANT: le bon fonctionnement de ce script nécessite la présence de deux petits utilitaires de manipulation [JSON (jq)](https://stedolan.github.io/jq/) et [YAML (yq)](https://mikefarah.gitbook.io/yq/). Il est donc nécessaire de les installer localement, en suivant la procédure adaptée au système d'exploitation.
-
 
 Ce script va :
 
@@ -42,7 +40,24 @@ To switch to spark config:
 export KUBECONFIG=/Users/sa/dev/g6/git/gha-workbench/k8s/kubeconfig.spark.kspray1.local
 ```
 
-On peut donc couper/coller la dernière ligne pour s'identifier sous le compte de service 'spark'
+On peut donc couper/coller la dernière ligne pour s'identifier sous le compte de service 'spark' et lancer ensuite des commandes `spark-submit`.
 
-# Au travers d'ArgoCD
+A noter que le compte de service ainsi créé est utilisé pour deux fonctions :
+
+- Par l'utilisateur pour lancer les `spark submit`
+- Par le driver Spark (Dans le POD lancé par le spark submit) pour interagir avec Kubernetes, notament pour lancer et controler les POD executor.
+
+## Au travers d'ArgoCD
+
+Il est aussi possible de créer cet espace utilisateur au travers d'une charte Helm, déployé par ArgoCD: <https://github.com/BROADSoftware/depack/tree/master/middlewares/spark/spark-namespace>
+
+Il suffit de déployer cette charte avec le namespace souhaité comme cible (En activant la création du namespace dans ArgoCD). 
+
+Dans ce namespace sera donc déployé compte de service et un Role RBAC permettant le déploiement et la bonne exécution d'applications Spark (En fait cela est équivalent au résultat du script `setup.sh` décrit au paragraphe précédent)
+
+Ce namespace pourra ensuite etres utilisé pour les déploiements de `SparkApplication` et `ScheduledSparkApplication` au travers d'ArgoCD, ou bien par kubectl.
+
+Dans ce dernier cas, on pourra fournir à l'utilisateur un 'kubconfig' approprié. Pour le générer, on pourra utiliser le script <https://github.com/gha2/gha-workbench/blob/master/spark-operator/user.sh>
+
+
 

@@ -7,10 +7,10 @@
 - [Kubernetes](#kubernetes)
 - [ArgoCD](#argocd)
 - [Minio](#minio)
-  - [Déploiement](#d%C3%A9ploiement)
+  - [Minio: Déploiement](#minio-d%C3%A9ploiement)
 - [Topolvm](#topolvm)
 - [Spark](#spark)
-  - [Gestion des Jars applicatif.](#gestion-des-jars-applicatif)
+  - [Spark: Gestion des Jars applicatif.](#spark-gestion-des-jars-applicatif)
 - [Operateur Spark](#operateur-spark)
 - [Spark history server](#spark-history-server)
 - [Hive Metastore](#hive-metastore)
@@ -32,9 +32,11 @@ ArgoCD est une application Kubernetes permettant l'automatisation des déploieme
 
 Il permet le pattern GitOps, évolution de l'IAC (Infrastructure As Code) en automatisant la réconciliation entre les définitions stockées dans Git et la réalité des applications déployées sur le cluster.
 
-Avec ArgoCD, un déploiement peut lui-même être décrit sous la forme d'un manifest Kubernetes, ce qui permet le pattern app-of-apps (Ou Meta application).
+Avec ArgoCD, un déploiement peut lui-même être décrit sous la forme d'un manifest Kubernetes, ce qui permet le pattern app-of-apps (Ou Meta-Application).
 
 L'ensemble des déploiements utilisés pour ce Poc sont [dans ce repo](https://github.com/BROADSoftware/depack).
+
+> A noter que ce repo contient aussi des déploiements sans relation avec ce POC.
 
 Pour pouvoir rentrer dans ce moule, un déploiement doit pouvoir être entièrement défini sous forme de manifest Kubernetes. Ce qui est généralement le cas, à l'exception de certain middlewares spécifiques.
 
@@ -52,22 +54,24 @@ Dans le cadre de ce POC, Minio est configuré de manière 'secure', en utilisant
 
 Les deux solutions on été successivement utilisées dans le cadre de ce POC.
 
-### Déploiement
+### Minio: Déploiement
 
 Le serveur Minio peut etre déployé directement sur les machines (VMs ou Bare-metal). Il peut aussi etres déployé sur une infrastructure Kubernetes. ceci soit:
 
 - Directement, au travers d'une chartre Helm.
 - Ou bien par l'intermédiaire d'un opérateur.
 
-Cette deuxième méthode a été utilisée dans notre contexte. [Voir ici pour le déploiement](https://github.com/BROADSoftware/depack/tree/master/middlewares/minio.3.0.28)
+Cette deuxième méthode a été utilisée dans notre contexte. [Voir ici](https://github.com/BROADSoftware/depack/tree/master/middlewares/minio.3.0.28)
 
 ## Topolvm
 
-Topolvm est un driver CSI (Container Storage Interface) permettant la création dynamique de `LogicalVolume` LVM et leur attachement aux containers applicatifs.
+Topolvm est un driver CSI (Container Storage Interface) permettant la création dynamique de `LogicalVolume` LVM et leur attachement aux containers applicatifs en tant que `PersistentVolumes`.
 
 Il est notamment utilisé pour satisfaire les PVC (`PersistantVolumeClaim`) demandés par Minio.
 
-Topolvm est déployé à la création du cluster. (Il est incompatible avec le pattern appsOfApps, car il nécessite notamment le déployement de modules systemd)
+Topolvm est déployé à la création du cluster. (Il est incompatible avec le pattern appsOfApps, car il nécessite notamment le déployement de modules systemd).
+
+Topolvm intègre aussi une extention du Scheduler kubernetes, afin d'influencer les règles de placement en fonction de l'espace disque restant dicponible sur chaque noeud.
 
 ## Spark
 
@@ -75,7 +79,7 @@ Le fonctionnement de Spark sur Kubernetes est assez analogue à celui sur Yarn, 
 
 Dans le cadre de notre POC, l'autre différence par rapport à un context Hadoop est la substitution du stockage HDFS par S3.
 
-### Gestion des Jars applicatif.
+### Spark: Gestion des Jars applicatif.
 
 Pour son fonctionnement, Spark va charger dynamiquement un (ou plusieurs) jars applicatif, en utilisant le 'ClassLoader' de Java.
 
@@ -94,15 +98,17 @@ La seconde solution est un peu plus exigente en terme de configuration. C'est ce
 
 En standard, le déploiement d'une application Spark consiste à lancer une commande `spark-submit` depuis l'extérieur du cluster. Ce pattern impératif n'est donc pas compatible avec une logique GitOps.
 
-Un projet de google [Spark Operateur](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator) permet de résoudre ce problème en permettant de définir une application spark de manière déclarative.
+[L'opérateur Spark](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator) est un projet de Google résolvant ce problème en permettant de définir une application spark de manière déclarative.
+
+Il permet aussi de définir un lancement récurent d'application Spark, avec une logique de Crontab.
 
 ## Spark history server
 
-Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'exécution des tâches. Ce front-end est géré par le `driver` spark, ce qui implique qu'il disparaisse à la fin du traitement.
+Lors de l'exécution d'un job spark, le driver offre un front-end web permettant de monitorer l'exécution des tâches. Ce front-end est géré par le `driver` spark, ce qui implique qu'il va disparaitre à la fin du traitement.
 
-Néanmoins, à le fin de ce traitement, les journaux d'événement Spark sont sauvegardé dans un bucket S3. Et le `spark history server` permet de les visualiser.
+Néanmoins, à la fin de ce traitement, les journaux d'événement Spark sont sauvegardés dans un bucket S3. Et le `Spark history server` permet de les visualiser.
 
-Ce server est bien sur containerisé et accessible au travers d'un ingress controller.
+Pour notre POC, ce server est bien sur containerisé et accessible au travers d'un ingress controller.
 
 ## Hive Metastore
 

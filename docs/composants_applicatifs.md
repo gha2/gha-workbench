@@ -66,9 +66,9 @@ Et le deploiement dans le cadre de notre POC: <https://github.com/BROADSoftware/
 
 ## Json2Parquet
 
-L'objet de cette application est donc de transformer les données brutes, stockées en format JSON en donnée exploitable facilement par Spark, sous la forme d'une table au format parquet.
+L'objet de cette application est de transformer les données brutes, stockées en format JSON en donnée exploitable facilement par Spark, sous la forme d'une table au format parquet.
 
-La logique de `Json2Parquet` est un peu équivalente à celle de `gha2Minio`.
+La logique de `Json2Parquet` est un peu équivalente à celle de `gha2minio`.
 
 Les données résultantes sont stockées sous la forme d'une table parquet partitionnée par années/mois/jours
 
@@ -91,7 +91,7 @@ Les patterns des noms de fichier d'entré et de sortie sont configurable, ainsi 
 
 `Json2Parquet` n'interagis pas avec le Metastore Hive et est indépendant de celui-ci.
 
-Son utilisation effective est illustrée plus bas.
+Son utilisation effective est illustrée dans un autre chapitre de cette documentation.
 
 ## CreateTable
 

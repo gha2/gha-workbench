@@ -6,13 +6,15 @@
 
 - [Docker image registry](#docker-image-registry)
 - [Hive Metastore](#hive-metastore)
-  - [Création de l'image docker.](#cr%C3%A9ation-de-limage-docker)
-  - [Déploiement sur Kubernetes](#d%C3%A9ploiement-sur-kubernetes)
-- [Déploiement de l'arborescence Spark (En local)](#d%C3%A9ploiement-de-larborescence-spark-en-local)
-- [Configuration de l'arborescence Spark](#configuration-de-larborescence-spark)
-- [Generation de l'image Spark](#generation-de-limage-spark)
-- [S3 storage setup](#s3-storage-setup)
-- [Le Spark History Server](#le-spark-history-server)
+  - [Hive Metastore: Création de l'image docker.](#hive-metastore-cr%C3%A9ation-de-limage-docker)
+  - [Hive Metastore: Déploiement sur Kubernetes](#hive-metastore-d%C3%A9ploiement-sur-kubernetes)
+- [Spark](#spark)
+  - [Spark: Déploiement de l'arborescence.](#spark-d%C3%A9ploiement-de-larborescence)
+  - [Spark: Configuration de l'arborescence.](#spark-configuration-de-larborescence)
+  - [Spark: Generation de l'image.](#spark-generation-de-limage)
+- [S3 setup](#s3-setup)
+- [Spark History Server](#spark-history-server)
+- [Spark operator](#spark-operator)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -29,7 +31,7 @@ Pour ce POC, il a été utilisé la solution (gratuite) fournie par GitLab.
 
 Dans le cadre de ce POC, le Metastore Hive a vocation à être containerisé pour fonctionner dans Kubernetes
 
-### Création de l'image docker.
+### Hive Metastore: Création de l'image docker.
 
 Le projet <https://github.com/gha2/standalone-hive-metastore> héberge le Dockerfile adéquat, et les scripts associés.
 
@@ -45,8 +47,8 @@ Ce Dokerfile part d'une image `openjdk 1.8`. Ensuite:
 - Il copie le script de lancement.
 
 Ce script de lancement accepte de nombreux paramètre en entrée, passés sous forme de variable d'environnement.
-A noter qu'il est susceptible d'initialiser la base de données si elle n'est pas présente.  
-Il est donc aussi nécessaire de fournir les paramètres requis pour cette initialisation.
+
+A noter qu'il est susceptible d'initialiser la base de données si elle n'est pas présente. Il est donc aussi nécessaire de fournir les paramètres requis pour cette initialisation.
 
 Le script de lancement va donc:
 
@@ -59,7 +61,7 @@ Le script de lancement va donc:
 
 A noter en fin de script une astuce optionnelle retardant la fin d'exécution du script en cas d'erreur. Ceci pour permettre de visualiser les logs et/ou dans lancer un `kubectl exec ... /bin/sh` pour investiguer.
 
-### Déploiement sur Kubernetes
+### Hive Metastore: Déploiement sur Kubernetes
 
 Le déploiement du Metastore Hive dans le cadre de notre POC est défini ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/hive-metastore>
 
@@ -69,7 +71,11 @@ Ce déploiement contient trois ressources :
 - Le Déploiement lui-même.
 - Le Service permettant l'accès, avec éventuellement un point d'accès depuis l'extérieur
 
-## Déploiement de l'arborescence Spark (En local)
+Il est effectué dans le namespace `spark-system`.
+
+## Spark
+
+### Spark: Déploiement de l'arborescence.
 
 L'ensemble des scripts et autres fichiers de configuration qui sont utilisé dans la suite de ce document sont regroupé dans le repository <https://github.com/gha2/gha-workbench>. Si vous souhaitez reproduire ce POC dans votre contexte, clonez le sur votre système, et de se placez vous à sa racine.
 
@@ -122,13 +128,13 @@ rm -rf hadoop-3.2.0/
 mv hadoop-3.2.0.tar.gz archives/
 ```
 
-## Configuration de l'arborescence Spark
+### Spark: Configuration de l'arborescence.
 
 Il faut maintenant mettre en place certains fichiers de configuration :
 
 > Les fichiers ajoutés ou modifiés sont accessible ici : <https://github.com/gha2/gha-workbench/tree/master/spark-3.1.1>
 
-- Créer un fichier `log4j.properties` en dupliquant le template, sans le modifier.
+- Créer un fichier `log4j.properties` en dupliquant le template. A priori, aucune modification n'est nécésaire.
 
 ```
   cp spark-3.1.1/conf/log4j.properties.template spark-3.1.1/conf/log4j.properties
@@ -152,9 +158,9 @@ Il faut maintenant mettre en place certains fichiers de configuration :
   #spark.hive.metastore.uris thrift://tcp1.shared1:9083
 ```
 
-Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
+  Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
 
-> Si l'on souhaite plus d'information sur cette configuration, notamment sur la manière dont l'écriture sur S3 s'effectue, on pourra se reporter à ce lien : <https://hadoop.apache.org/docs/r3.1.1/hadoop-aws/tools/hadoop-aws/committers.html>
+  > Si l'on souhaite plus d'information sur cette configuration, notamment sur la manière dont l'écriture sur S3 s'effectue, on pourra se reporter à ce lien : <https://hadoop.apache.org/docs/r3.1.1/hadoop-aws/tools/hadoop-aws/committers.html>
 
 - Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
 
@@ -188,8 +194,8 @@ Le fichier complet est disponible à cet endroit : <https://github.com/gha2/gha-
     - Ajouter une ligne pour copier le fichier log4j.properties à l'emplacement défini précédement.
     - Ajouter les deux lignes permettant de copier le certificat de la CA de Minio et de l'ajouter dans le truststore. (Bien sur, ce certificat devra avant avoir été placé manuellement dans le répertoire `spark-3.1.1/kubernetes/dockerfiles/spark/`)
 
-  > Il est aussi possible de se contenter d'invalider la validation du certificat, comme évoqué précédement.
->
+    > Il est aussi possible de se contenter d'invalider la validation du certificat, comme évoqué précédement.
+
 ```
 .....
 COPY data /opt/spark/data
@@ -203,7 +209,7 @@ ENV SPARK_HOME /opt/spark
 .....
 ```
 
-## Generation de l'image Spark
+### Spark: Generation de l'image.
 
 A partir de cette arborescence, il est maintenant simple de créer une image `spark`, qui sera téléchargé dans une registry accessible publiquement.
 
@@ -217,9 +223,9 @@ Spark fournis en effet les scripts nécessaires :
 A noter que cette image Spark est générique, c'est à dire qu'elle n'embarque pas de module applicatif.
 
 
-## S3 storage setup
+## S3 setup
 
-Il est nécéssaire de créer un bucket `spark` qui aura deux usages :
+Il est de olus nécéssaire de créer un bucket `spark` qui aura deux usages :
 
 - Etre la zone d'échange permettant de rendre accessible le jar applicatif par les containers
 - Stocker les `event logs` spark, en vue de leur excploitation par le spark history server.
@@ -235,11 +241,11 @@ rm _empty_
 
 Bien sur, `minio1.shared1` devra ici être remplacé par le point d'accès Minio correct.
 
-> Comme la logique de Minio ne permet pas la création explicite d'un répertoire vide, on aura recours à la copie d'un fichier vide.
+> Comme la logique de Minio ne permet pas la création explicite d'un répertoire vide, on a recours à la copie d'un fichier vide.
 
-## Le Spark History Server
+## Spark History Server
 
-Voici le Dockerfile permettant la création de l'image pour le Spark history server :
+Voici le [Dockerfile](https://github.com/gha2/gha-workbench/blob/master/docker/spark-hs/Dockerfile) permettant la création de l'image pour le Spark history server :
 
 ```
 FROM registry.gitlab.com/gha1/spark:latest
@@ -254,3 +260,35 @@ USER 185
 > Pour des raisons obscures, l'application HistoryServer requiert que l'utilisateur soit nommé, alors que l'image Spark standard se contente d'un `uid`.
 
 On trouvera une Chart Helm de déploiement ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/spark/history-server>
+
+A noter que ce déploiement est effectué dans le namespace `spark-system`.
+
+## Spark operator
+
+Cet opérateur Spark se compose des éléments suivants:
+
+- Deux CRD (`CustomResourceDefinition`) décrivant les ressouces `SparkApplication` et `ScheduledSparkApplication`
+- Le déploiement d'un Pod `SparkOperator`, agissant en tant que controleur des deux ressources précédentes.
+- Un `ClusterRole` déclarant les privilèges nécéssaires pour le fonctionnement de l'opérateur, ainsi que `ServiceAccount` associé.
+- Un `MutatingWebHook` optionnel, mais nécessaire dans le cadre de ce POC, afin de permettre l'injection des variables d'environment.
+
+Une charte Helm est founie avec l'opérateur, prenant en charge tous les aspects du déploiement.
+
+> Cette charte intègre aussi d'autres éléments, tel qu'une configuration prometheus ou une configuration permettant le déploiement des jobs Spark dans le même namespace, ce que l'on ne souhaite pas ici.
+
+Une possibilité serait donc de recopier cette charte dans notre repository de référence.
+
+Toutefois, cette solution manque de souplesse. On utilisera donc un autre pattern, qui consiste a créer une indirection vers la charte d'origine en créant une charte intermédiaire qui dépend de la charte d'origine. 
+
+Cette charte ce trouve ici : <https://github.com/BROADSoftware/depack/tree/master/middlewares/spark/spark-operator>
+
+Pour ce POC, le déploiement de cette charte sera effectué par ArgoCD, dans le namespace `spark-system`.
+
+On profitera de cette charte intermédiaire pour ajoute un fichier `values.yaml` intégrant les configurations spécifiques de notre POC:
+
+- `securityContext.runAsUser: 1001` pour être compliant avec une PSP (`PodSecurityPolicy`) `restricted`.
+- Activation du webhook.  
+- Une image plus récente que celle définie par défault dans la charte (Qui comporte un bug empéchant les variables d'environment d'ètres renseignés).
+- Ne pas créer de compte de service pour Spark, car nous ne souhaiton pas déployer les application dans ces namespace.
+
+

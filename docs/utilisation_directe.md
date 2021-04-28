@@ -1,5 +1,7 @@
 # Utilisation directe
 
+Par 'utilisation directe', on entend le lancement de jobs Spark par la commande `spark submit`, par opposition à l'utilisation de l'opérateur Spark.
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Index**
@@ -10,7 +12,6 @@
 - [Fonctionnement local](#fonctionnement-local)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 
 ## Le script submit.sh
 
