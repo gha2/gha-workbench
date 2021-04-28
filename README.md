@@ -91,7 +91,12 @@ Dans notre contexte, il sera utilisé comme stockage principal pour tous les dé
 
 Outre la fonctionnalité serveur de stockage, Minio fournis aussi un interface CLI et des SDK dans différents languages, permettant l'accès à des fonctionnalités étendues. Mais, un serveur Minio est aussi accessible en utilisant les outils  standard AWS (CLI, libraries, SDK).
 
-Dans le cadre de ce POC, Minio est configuré de manière 'secure', en utilisant https. Le certificat serveur étant émis par une autorité globale au cluster, il y aura donc lieux, pour les applications y accédant soit de fournir le certificat de cette autorité, soit de désactiver la vérification de validité du certificat serveur..
+Dans le cadre de ce POC, Minio est configuré de manière 'secure', en utilisant https. Le certificat serveur étant émis par une autorité globale au cluster, il y aura donc lieux, pour les applications y accédant:
+
+- soit de désactiver la vérification de validité du certificat serveur.
+- soit de fournir le certificat de cette autorité 
+
+Les deux solutions on été successivement utilisées dans le cadre de ce POC.
 
 #### Déploiement
 
@@ -114,9 +119,25 @@ Topolvm est déployé à la création du cluster. (Il est incompatible avec le p
 
 Le fonctionnement de Spark sur Kubernetes est assez analogue à celui sur Yarn, excepté que driver et executors sont maintenant déployé dans des containers Kubernetes.
 
-Dans le cadre de notre POC, l'autre différence est la substitution du stockage HDFS par S3
+Dans le cadre de notre POC, l'autre différence par rapport à un context Hadoop est la substitution du stockage HDFS par S3.
 
-#### Spark operateur
+#### Gestion des Jars applicatif.
+
+Pour son fonctionnement, Spark va charger dynamiquement un (ou plusieurs) jars applicatif, en utilisant le 'ClassLoader' de Java.
+
+Spark étant par nature distribué, la mise à disposition de ce Jar applicatif à l'ensemble des instances d'exécution demande un traitement particulier.
+
+Dans notre contexte Kubernetes, deux solutions sont possibles :
+
+- Embarquer le jar applicatif dans l'image Docker.
+- Stocker le jar applicatif dans un stockage partagé et configurer Spark pour le retrouver dynamiquement.
+
+La première solution est la plus simple à mettre en oeuvre. Mais, elle impose un cycle de mise au point plus lourd. Elle pourra toutefois ètre privilégiée si l'on dispose d'une chaine CI/CD efficace, automatisant les nombreuses reconstruction de l'image.
+
+La seconde solution est un peu plus exigente en terme de configuration. C'est celle retenue pour ce POC.
+
+
+### Operateur Spark
 
 En standard, le déploiement d'une application Spark consiste à lancer une commande `spark-submit` depuis l'extérieur du cluster. Ce pattern impératif n'est donc pas compatible avec une logique GitOps.
 
@@ -127,6 +148,8 @@ Un projet de google [Spark Operateur](https://github.com/GoogleCloudPlatform/spa
 Le Metastore Hive permet un référencement des métadonnées (Database, Tables, Column, etc...). Il est implémenté sous la forme d'un container, dont la construction est détaillé plus bas.
 
 Il requiert un SGBD tel que PostgreSQL, Oracle ou MySQL. 
+
+A noter qu'il peut jouer le role d'un référentiel partagé avec d'autre applications (Presto par exemple)
 
 ### Spark history server
 
@@ -193,7 +216,7 @@ Quelques autres points notables :
 - Les patterns des nom de fichier d'entrés et de sortie sont configurable, ainsi que de nombreux paramètres de fonctionnement (Périodicité, durée de remonté dans le passé, limitation du nombre de téléchargement par itération, etc...)
 - `Gha2minio` est développé en Python et utilise le sdk Minio.
 - L'ensemble des paramètres est passé en ligne de commande à l'exécutable. Lors de l'utilisation en container, un script wrapper de lancement construit cette ligne de commande à partir de variables d'environnement.
-- Le Certificat racine permettant la validation de le connection https vers minio est monté sous forme de secret. A noter que ce certificat étant originellement présent dans un namespace différent, il y a lieux d'utiliser un [outil de réplication](https://github.com/mittwald/kubernetes-replicator).
+- Le Certificat racine permettant la validation de le connection https vers Minio est monté sous forme de secret. A noter que ce certificat étant originellement présent dans un namespace différent, il y a lieux d'utiliser un [outil de réplication](https://github.com/mittwald/kubernetes-replicator).
 - Les paramètres d'accès à Minio (Url, login, ...) sont aussi stockés sous forme de secret.
 
 Le projet est accessible par ce lien: <https://github.com/gha2/gha2minio>.
@@ -371,54 +394,77 @@ Il faut maintenant mettre en place certains fichiers de configuration :
 - Créer un fichier `log4j.properties` en dupliquant le template, sans le modifier.
 
 ```
-cp spark-3.1.1/conf/log4j.properties.template spark-3.1.1/conf/log4j.properties
+  cp spark-3.1.1/conf/log4j.properties.template spark-3.1.1/conf/log4j.properties
 ```
 
 - Configurer le fichier `spark-3.1.1/conf/spark-defaults.conf` avec les informations suivantes   
 
 ```
-spark.hadoop.mapreduce.outputcommitter.factory.scheme.s3a org.apache.hadoop.fs.s3a.commit.S3ACommitterFactory
-spark.hadoop.fs.s3a.committer.name directory
-spark.hadoop.fs.s3a.committer.staging.tmp.path /tmp/spark_staging
-spark.hadoop.fs.s3a.buffer.dir /tmp/spark_local_buf
-spark.hadoop.fs.s3a.committer.staging.conflict-mode fail
-spark.hadoop.fs.s3a.impl org.apache.hadoop.fs.s3a.S3AFileSystem
-spark.hadoop.fs.s3a.path.style.access true
-
-#spark.hadoop.fs.s3a.endpoint https://minio1.shared1/
-#spark.hadoop.fs.s3a.access.key minio
-#spark.hadoop.fs.s3a.secret.key minio123
-
-#spark.hive.metastore.uris thrift://tcp1.shared1:9083
+  spark.hadoop.mapreduce.outputcommitter.factory.scheme.s3a org.apache.hadoop.fs.s3a.commit.S3ACommitterFactory
+  spark.hadoop.fs.s3a.committer.name directory
+  spark.hadoop.fs.s3a.committer.staging.tmp.path /tmp/spark_staging
+  spark.hadoop.fs.s3a.buffer.dir /tmp/spark_local_buf
+  spark.hadoop.fs.s3a.committer.staging.conflict-mode fail
+  spark.hadoop.fs.s3a.impl org.apache.hadoop.fs.s3a.S3AFileSystem
+  spark.hadoop.fs.s3a.path.style.access true
+  
+  #spark.hadoop.fs.s3a.endpoint https://minio1.shared1/
+  #spark.hadoop.fs.s3a.access.key minio
+  #spark.hadoop.fs.s3a.secret.key minio123
+  
+  #spark.hive.metastore.uris thrift://tcp1.shared1:9083
 ```
 
-Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
+  Les quatre dernières lignes devront être activées (dé-commentées) si l'on souhaite utiliser `spark-sql`, ou `spark-shell` en mode local, avec l'accès au Metastore Hive et aux données dans le stockage S3.
 
 > Si l'on souhaite plus d'information sur cette configuration, notamment sur la manière dont l'écriture sur S3 s'effectue, on pourra se reporter à ce lien : <https://hadoop.apache.org/docs/r3.1.1/hadoop-aws/tools/hadoop-aws/committers.html>
 
 - Modifier le script `spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh` avec deux changements :
-  
-  - Ajouter une ligne `export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"` avant le lancement des exécutables. Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui est le cas dans le cadre de notre POC pour l'accès à Minio.
+
+  - Ajouter une ligne `export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties"` avant le lancement des exécutables, pour la bonne prise en compte de ce fichier de configuration des logs applicatifs. 
+  - Si l'on ne prévoit pas d'ajouter une autorité de certification dans l'image (Voir plus bas), on complétera cette ligne par `" -Dcom.amazonaws.sdk.disableCertChecking=true"` . Ceci afin d'admettre des certificats signées par une autorité inconnue. Ce qui serait le cas dans le cadre de notre POC pour l'accès à Minio.
   - Ajouter une option `--verbose` au lancement du driver. Ceci est optionnel, et permet l'affichage des valeurs retenues pour la configuration.
   
   Voici un extrait de ce fichier avec les modifications :
 
 ```
-.....
-export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
-
-case "$1" in
-driver)
-shift 1
-CMD=(
-"$SPARK_HOME/bin/spark-submit"
---verbose
---conf "spark.driver.bindAddress=$SPARK_DRIVER_BIND_ADDRESS"
---deploy-mode client
-.....
+  .....
+  
+  # export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties -Dcom.amazonaws.sdk.disableCertChecking=true"
+  export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties"
+  
+  case "$1" in
+  driver)
+  shift 1
+  CMD=(
+  "$SPARK_HOME/bin/spark-submit"
+  --verbose
+  --conf "spark.driver.bindAddress=$SPARK_DRIVER_BIND_ADDRESS"
+  --deploy-mode client
+  .....
 ```
 
-Le fichier complet est disponible à cet endroit : <https://github.com/gha2/gha-workbench/blob/master/spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh>.
+  Le fichier complet est disponible à cet endroit : <https://github.com/gha2/gha-workbench/blob/master/spark-3.1.1/kubernetes/dockerfiles/spark/entrypoint.sh>.
+
+- Modifier le `Dockerfile`
+
+  - Ajouter une ligne pour copier le fichier log4j.properties à l'emplacement défini précédement.
+  - Ajouter les deux lignes permettant de copier le certificat de la CA de Minio et de l'ajouter dans le truststore. (Bien sur, ce certificat devra avant avoir été placé manuellement dans le répertoire `spark-3.1.1/kubernetes/dockerfiles/spark/`)
+  
+  > Il est aussi possible de se contenter d'invalider la validation du certificat, comme évoqué précédement.
+  > 
+```
+.....
+COPY data /opt/spark/data
+
+COPY conf/log4j.properties /opt/spark/log4j.properties
+
+COPY kubernetes/dockerfiles/spark/ca2.crt $JAVA_HOME/lib/security
+RUN cd $JAVA_HOME/lib/security && keytool -cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias ca2.broadsoftware.com -file ca2.crt
+
+ENV SPARK_HOME /opt/spark
+.....
+```
 
 ### Generation de l'image Spark
 
@@ -474,7 +520,7 @@ Il est nécéssaire de créer un bucket `spark` qui aura deux usages :
 - Etre la zone d'échange permettant de rendre accessible le jar applicatif par les containers
 - Stocker les `event logs` spark, en vue de leur excploitation par le spark history server.
 
-Pour cela, avec la commande `mc`, de `minio` :
+Pour cela, avec la commande `mc`, de `Minio` :
 
 ```
 mc mb minio1.shared1/spark
@@ -483,9 +529,9 @@ mc cp empty  minio1.shared1/spark/eventlogs/empty
 rm _empty_
 ```
 
-Bien sur, `minio1.shared1` devra ici être remplacé par le point d'accès minio correct.
+Bien sur, `minio1.shared1` devra ici être remplacé par le point d'accès Minio correct.
 
-> Comme la logique de minio ne permet pas la création explicite d'un répertoire vide, on aura recours à la copie d'un fichier vide.
+> Comme la logique de Minio ne permet pas la création explicite d'un répertoire vide, on aura recours à la copie d'un fichier vide.
 
 ### Le Spark History Server
 
@@ -658,17 +704,15 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 
 ## Next steps
 
-- [spark operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
 - Benchmark (TPC-DS, ....)
 - Monitoring  
 - Etude de l'utilisation du stockage (Shuffle/Spilling)
 - Node affinity
-- Gestion des ressources RAM/CPU
+- Activer le cleaner sur spark-history-server (https://stackoverflow.com/questions/42817924/cleaning-up-spark-history-logs)
 - Gestion des droits S3
 - Jupyter notebook
 - [Apache Livy](https://livy.incubator.apache.org/)
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
-- Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).
 - Test de résilience / chaos monkey
 - Spark Streaming
 - Déploiement AWS (S3 de référence)
@@ -680,7 +724,9 @@ Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utili
 - [Ozone](https://ozone.apache.org/)  
 - Trouver un opérateur S3 pour gestion des buckets
 
-
+Done (To document)
+- Meilleure gestion du certificat TLS Minio.(Actuellement disableCertCheck).
+- [spark operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
 
 
 

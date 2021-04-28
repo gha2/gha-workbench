@@ -67,7 +67,7 @@ elif ! [ -z ${SPARK_HOME+x} ]; then
   SPARK_CLASSPATH="$SPARK_HOME/conf:$SPARK_CLASSPATH";
 fi
 
-# export _JAVA_OPTIONS="-Dcom.amazonaws.sdk.disableCertChecking=true"
+# export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties -Dcom.amazonaws.sdk.disableCertChecking=true"
 export _JAVA_OPTIONS="-Dlog4j.configuration=file:///opt/spark/log4j.properties"
 
 case "$1" in

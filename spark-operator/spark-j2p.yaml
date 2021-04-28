@@ -16,8 +16,8 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: spark-j2p
-  namespace: spark-operator
+  name: spark-j2p   # Used as the drive name prefix
+  namespace: spark1
 spec:
   type: Scala
   mode: cluster
@@ -43,7 +43,7 @@ spec:
     - --dstObjectFormat
     - "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
     - --appName
-    - spark-j2p
+    - spark-j2p   # Will be used for executor name prefix
     # The following does not work. Seems 'arguments' are not interpolated with env variable.
     # So, the variable fetching is handled in the code of the application.
     # - --s3Endpoint
@@ -60,17 +60,17 @@ spec:
       - name: S3_ENDPOINT
         valueFrom:
           secretKeyRef:
-            name: spark-minio-server
-            key: server
+            name: minio-server
+            key: serverUrl
       - name: S3_ACCESS_KEY
         valueFrom:
           secretKeyRef:
-            name: spark-minio-server
+            name: minio-server
             key: accessKey
       - name: S3_SECRET_KEY
         valueFrom:
           secretKeyRef:
-            name: spark-minio-server
+            name: minio-server
             key: secretKey
     cores: 1
     coreLimit: "4"
@@ -78,7 +78,7 @@ spec:
     labels:
       version: "3.1.1"
     podName: spark-j2p-driver
-    serviceAccount: spark-operator1-spark
+    serviceAccount: spark
   executor:
     instances: 2
     cores: 1

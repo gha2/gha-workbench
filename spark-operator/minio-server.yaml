@@ -1,0 +1,14 @@
+# Value for minio1.server 
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-server
+  namespace: spark1
+type: Opaque
+data:
+  #server: bWluaW8ubWluaW8xLnN2Yw==  # minio.minio1.svc
+  serverUrl: aHR0cHM6Ly9taW5pby5taW5pbzEuc3Zj  # https://minio.minio1.svc
+  accessKey: bWluaW8=
+  secretKey: bWluaW8xMjM=
+

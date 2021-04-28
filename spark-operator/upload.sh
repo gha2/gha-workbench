@@ -3,7 +3,8 @@
 MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="$(cd .. && pwd)"
 
-if [ -z "${MC_ALIAS}" ]; then export MC_ALIAS="minio1.shared1"; fi
+#if [ -z "${MC_ALIAS}" ]; then export MC_ALIAS="minio1.shared1"; fi
+if [ -z "${MC_ALIAS}" ]; then export MC_ALIAS="minio1.kspray1.ctb01"; fi
 
 
 GHA2SPARK=$BASEDIR/../gha2spark

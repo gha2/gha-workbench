@@ -16,8 +16,8 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: ScheduledSparkApplication
 metadata:
-  name: spark-j2p
-  namespace: spark-operator
+  name: spark-j2p-scheduled  # Used as the drive name prefix
+  namespace: spark1
 spec:
   schedule: "@every 1m"
   concurrencyPolicy: Forbid
@@ -29,7 +29,8 @@ spec:
     image: "registry.gitlab.com/gha1/spark"
     imagePullPolicy: Always
     mainClass: "gha2spark.Json2Parquet"
-    mainApplicationFile: "s3a://spark/jars/gha2spark-0.1.0-uber.jar"
+    #mainApplicationFile: "s3a://spark/jars/gha2spark-0.1.0-uber.jar"
+    mainApplicationFile: "https://minio1.shared1/spark/jars/gha2spark-0.1.0-uber.jar"
     sparkVersion: "3.1.1"
     restartPolicy:
       type: Never
@@ -46,24 +47,42 @@ spec:
       - gha-secondary-1
       - --dstObjectFormat
       - "raw/year={{year}}/month={{month}}/day={{day}}/hour={{hour}}"
+      - --appName
+      - spark-j2p-scheduled # Will be used for executor name prefix
+      # The following does not work. Seems 'arguments' are not interpolated with env variable.
+      # So, the variable fetching is handled in the code of the application.
+      # - --s3Endpoint
+      # - "${S3_ENDPOINT}"
     sparkConf:
       "spark.kubernetes.file.upload.path": "s3a://spark/shared"
       "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem"
       "spark.hadoop.fs.s3a.fast.upload": "true"
-      "spark.hadoop.fs.s3a.endpoint": "https://minio1.shared1"
-      "spark.hadoop.fs.s3a.connection.ssl.enabled": "true"
-      "spark.hadoop.fs.s3a.access.key": "minio"
-      "spark.hadoop.fs.s3a.secret.key": "minio123"
       "spark.hadoop.fs.s3a.path.style.access": "true"
       "spark.eventLog.enabled": "true"
       "spark.eventLog.dir": "s3a://spark/eventlogs"
     driver:
+      env:
+        - name: S3_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: minio-server
+              key: serverUrl
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-server
+              key: accessKey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-server
+              key: secretKey
       cores: 1
       coreLimit: "4"
       memory: "4G"
       labels:
         version: "3.1.1"
-      serviceAccount: spark-operator1-spark
+      serviceAccount: spark
     executor:
       instances: 2
       cores: 1

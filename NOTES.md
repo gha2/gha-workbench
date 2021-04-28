@@ -128,3 +128,5 @@ https://stackoverflow.com/questions/39906536/spark-history-server-on-s3a-filesys
 
 
 https://learnk8s.io/kubernetes-secrets-in-git
+
+https://medium.com/swlh/presto-with-kubernetes-and-s3-deployment-4e262849244a
