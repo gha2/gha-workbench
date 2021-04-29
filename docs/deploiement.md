@@ -284,11 +284,12 @@ Cette charte ce trouve ici : <https://github.com/BROADSoftware/depack/tree/maste
 
 Pour ce POC, le déploiement de cette charte sera effectué par ArgoCD, dans le namespace `spark-system`.
 
-On profitera de cette charte intermédiaire pour ajoute un fichier `values.yaml` intégrant les configurations spécifiques de notre POC:
+On profitera de cette charte intermédiaire pour ajoute un fichier [`values.yaml`](https://github.com/BROADSoftware/depack/blob/master/middlewares/spark/spark-operator/values.yaml) intégrant les configurations spécifiques de notre POC:
 
 - `securityContext.runAsUser: 1001` pour être compliant avec une PSP (`PodSecurityPolicy`) `restricted`.
 - Activation du webhook.  
 - Une image plus récente que celle définie par défault dans la charte (Qui comporte un bug empéchant les variables d'environment d'ètres renseignés).
 - Ne pas créer de compte de service pour Spark, car nous ne souhaiton pas déployer les application dans ces namespace.
 
+A propos du Webhook, il est a noter que la charte Helm n'intègre pas de définition d'une resource `MutatingWebhookConfiguration`. Cette resource est créée dynamiquement par le pod `spark-operateur` lors de son initialisation. On notera aussi la présence d'un pod `spark-operator-webhook-init` qui va créer un secret contenant un certficat dédié à la communication entre ce webhook et l'api server.
 
