@@ -1,5 +1,5 @@
 <table style="width: 100%"><tr>
-    <td style="width: 33%; text-align: left"><a href="../README.md"><- Overview</a></td>
+    <td style="width: 33%; text-align: left"><a href="../README.md#Overview"><- Overview</a></td>
     <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
     <td style="width: 33%; text-align: right"><a href="composants_applicatifs.md">Composants applicatifs -></a></td>
 </tr></table>
@@ -134,7 +134,7 @@ Le deploiement dans notre contexte est [ici](https://github.com/BROADSoftware/de
 A noter que dans le cadre de ce POC, la persistence est généralement assurée par un stockage local (En utilisant Topolvm). Ce qui implique une adhérence entre le serveur et le noeud qui le porte. Ceci est bien évidement inacceptable dans un contexte autre que celui d'un POC.
 
 <table style="width: 100%"><tr>
-    <td style="width: 33%; text-align: left"><a href="../README.md"><- Overview</a></td>
+    <td style="width: 33%; text-align: left"><a href="../README.md#Overview"><- Overview</a></td>
     <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
     <td style="width: 33%; text-align: right"><a href="composants_applicatifs.md">Composants applicatifs -></a></td>
 </tr></table>
