@@ -1,3 +1,9 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="utilisation_spark_operator.md"><- Utilisation au travers de l'Opérateur Spark</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"></td>
+</tr></table>
+
 # Ensuite....
 
 - Benchmark (TPC-DS, ....)
@@ -26,5 +32,10 @@ Done (To document)
 
 - Activer le cleaner sur spark-history-server (https://stackoverflow.com/questions/42817924/cleaning-up-spark-history-logs)
 
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="utilisation_spark_operator.md"><- Utilisation au travers de l'Opérateur Spark</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"></td>
+</tr></table>
 
 

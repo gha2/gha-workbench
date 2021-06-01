@@ -1,3 +1,11 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="composants_applicatifs.md"><- Composants applicatifs</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="creation_espace_utilisateur.md">Création des espaces utilisateurs -></a></td>
+</tr></table>
+
+
+
 # Déploiement et mise en oeuvre
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -292,4 +300,10 @@ On profitera de cette charte intermédiaire pour ajoute un fichier [`values.yaml
 - Ne pas créer de compte de service pour Spark, car nous ne souhaitons pas déployer les applications dans ce même namespace.
 
 A propos du Webhook, il est a noter que la charte Helm n'intègre pas de définition d'une resource `MutatingWebhookConfiguration`. Cette resource est créée dynamiquement par le pod `spark-operateur` lors de son initialisation. On notera aussi la présence d'un pod `spark-operator-webhook-init` qui va créer un secret contenant un certficat dédié à la communication entre ce webhook et l'api server.
+
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="composants_applicatifs.md"><- Composants applicatifs</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="creation_espace_utilisateur.md">Création des espaces utilisateurs -></a></td>
+</tr></table>
 

@@ -1,3 +1,9 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="deploiement.md"><- Déploiement et mise en oeuvre</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="utilisation_directe.md">Utilisation directe -></a></td>
+</tr></table>
+
 # Création des espaces utilisateur
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -59,5 +65,9 @@ Ce namespace pourra ensuite etres utilisé pour les déploiements de `SparkAppli
 
 Dans ce dernier cas, on pourra fournir à l'utilisateur un 'kubconfig' approprié. Pour le générer, on pourra utiliser le script <https://github.com/gha2/gha-workbench/blob/master/spark-operator/user.sh>
 
-
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="deploiement.md"><- Déploiement et mise en oeuvre</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="utilisation_directe.md">Utilisation directe -></a></td>
+</tr></table>
 

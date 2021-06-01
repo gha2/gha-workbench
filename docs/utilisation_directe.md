@@ -1,3 +1,9 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="creation_espace_utilisateur.md"><- Création des espaces utilisateurs</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="utilisation_spark_operator.md">Utilisation au travers de l'Opérateur Spark -></a></td>
+</tr></table>
+
 # Utilisation directe
 
 Par 'utilisation directe', on entend le lancement de jobs Spark par la commande `spark submit`, par opposition à l'utilisation de l'opérateur Spark.
@@ -165,3 +171,9 @@ Après la fin du traitement, le container passe dans l'état `completed`. Les jo
 Durant les phases de mise au point, afin de raccourcir le cycle de test, il peut être plus simple de tester les différents modules hors d'un contexte Kubernetes.
 
 Pour cela, on pourra utiliser le script `submit-local.sh`. On pourra aussi utiliser les différents `docker-compose.yml` des répertoires `./stackX` pour instancier Minio, Postgresql, ... hors de Kubernetes. 
+
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="creation_espace_utilisateur.md"><- Création des espaces utilisateurs</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="utilisation_spark_operator.md">Utilisation au travers de l'Opérateur Spark -></a></td>
+</tr></table>

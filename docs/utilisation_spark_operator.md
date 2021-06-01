@@ -1,3 +1,9 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="utilisation_directe.md"><- Utilisation directe</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="ensuite.md">Ensuite... -></a></td>
+</tr></table>
+
 # Utilisation au travers de l'opérateur Spark.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -174,3 +180,9 @@ spec:
     syncOptions:
       - CreateNamespace=false
 ```
+
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="utilisation_directe.md"><- Utilisation directe</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="ensuite.md">Ensuite... -></a></td>
+</tr></table>
