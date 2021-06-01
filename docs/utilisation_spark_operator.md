@@ -102,7 +102,7 @@ spec:
       version: "3.1.1"
 ```
 
-Ce manifest (`spark-j2p.yaml`) ainsi que d'autres exemple se trouve [ic](https://github.com/gha2/gha-workbench/tree/master/spark-operator)
+Ce manifest (`spark-j2p.yaml`) ainsi que d'autres exemple se trouve [ici](https://github.com/gha2/gha-workbench/tree/master/spark-operator)
 
 Ce job Spark vas donc lancer la commande `json2parquet` sur un fichier (`--maxFiles 1`) et ensuite s'arrèter (`--waitSeconds 0`). C'est l'équivalent du premier exemple d'utilisation du chapitre précédent.
 

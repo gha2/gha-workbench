@@ -112,7 +112,7 @@ Pour notre POC, ce server est bien sur containerisé et accessible au travers d'
 
 ## Hive Metastore
 
-Le Metastore Hive permet un référencement des métadonnées (Database, Tables, Column, etc...). Il est implémenté sous la forme d'un container, dont la construction est détaillé plus bas.
+Le Metastore Hive permet un référencement des métadonnées (Database, Tables, Column, etc...). Il est implémenté sous la forme d'un container, dont la construction sera détaillée ultérieurement.
 
 Il requiert un SGBD tel que PostgreSQL, Oracle ou MySQL.
 

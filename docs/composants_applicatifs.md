@@ -1,3 +1,9 @@
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="composants_infrastructure.md"><- Composant d'infrastructure</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="deploiement.md">Déploiement et mise en oeuvre -></a></td>
+</tr></table>
+
 # Composants applicatifs
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -117,3 +123,9 @@ spark.sql(String.format("CREATE TABLE IF NOT EXISTS %s.%s USING PARQUET LOCATION
         , parameters.getSelect()
 ));
 ```
+
+<table style="width: 100%"><tr>
+    <td style="width: 33%; text-align: left"><a href="composants_infrastructure.md"><- Composant d'infrastructure</a></td>
+    <td style="width: 33%; text-align: center"><a href="../README.md">HOME</a></td>
+    <td style="width: 33%; text-align: right"><a href="deploiement.md">Déploiement et mise en oeuvre -></a></td>
+</tr></table>

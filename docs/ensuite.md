@@ -4,25 +4,27 @@
 - Monitoring
 - Etude de l'utilisation du stockage (Shuffle/Spilling)
 - Node affinity
-- Activer le cleaner sur spark-history-server (https://stackoverflow.com/questions/42817924/cleaning-up-spark-history-logs)
 - Gestion des droits S3
 - Jupyter notebook
 - [Apache Livy](https://livy.incubator.apache.org/)
+- Presto  
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Test de résilience / chaos monkey
+- Remplacer spark hostiry server par [delight](https://github.com/datamechanics/delight)
+- Tester [data mechanics platform](https://www.datamechanics.co/)
 - Spark Streaming
 - Déploiement AWS (S3 de référence)
+- Etude [ALLUXIO](https://www.alluxio.io/)  
 - Etude [DeltaLake](https://delta.io/)
 - Etude [YuniKorn](http://yunikorn.apache.org/)
 - Access (beeline, JDBC, spark Thrift server)
 - [querybook](https://www.querybook.org/)
-- HDFS on kubernetes ?
 - [Ozone](https://ozone.apache.org/)
 - Trouver un opérateur S3 pour gestion des buckets
 
 Done (To document)
 
-- [spark operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
+- Activer le cleaner sur spark-history-server (https://stackoverflow.com/questions/42817924/cleaning-up-spark-history-logs)
 
 
 

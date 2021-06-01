@@ -225,10 +225,10 @@ A noter que cette image Spark est générique, c'est à dire qu'elle n'embarque 
 
 ## S3 setup
 
-Il est de olus nécéssaire de créer un bucket `spark` qui aura deux usages :
+Il est de plus nécessaire de créer un bucket `spark` qui aura deux usages :
 
 - Etre la zone d'échange permettant de rendre accessible le jar applicatif par les containers
-- Stocker les `event logs` spark, en vue de leur excploitation par le spark history server.
+- Stocker les `event logs` spark, en vue de leur exploitation par le spark history server.
 
 Pour cela, avec la commande `mc`, de `Minio` :
 
@@ -289,7 +289,7 @@ On profitera de cette charte intermédiaire pour ajoute un fichier [`values.yaml
 - `securityContext.runAsUser: 1001` pour être compliant avec une PSP (`PodSecurityPolicy`) `restricted`.
 - Activation du webhook.  
 - Une image plus récente que celle définie par défault dans la charte (Qui comporte un bug empéchant les variables d'environment d'ètres renseignés).
-- Ne pas créer de compte de service pour Spark, car nous ne souhaiton pas déployer les application dans ces namespace.
+- Ne pas créer de compte de service pour Spark, car nous ne souhaitons pas déployer les applications dans ce même namespace.
 
 A propos du Webhook, il est a noter que la charte Helm n'intègre pas de définition d'une resource `MutatingWebhookConfiguration`. Cette resource est créée dynamiquement par le pod `spark-operateur` lors de son initialisation. On notera aussi la présence d'un pod `spark-operator-webhook-init` qui va créer un secret contenant un certficat dédié à la communication entre ce webhook et l'api server.
 
