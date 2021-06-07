@@ -4,10 +4,10 @@ This doc is a small memo on my current status about Spark/S3 on K8s POC on AWS
 
 ## Security model
 
-### 'Raw' AWS
-
-This part is not about K8S security model, which is clear and well known. 
+This part is not about K8S security model, which is clear and well known.
 What I would like to dicuss here is about allowing/securing access to AWS, non-K8S ressources, such as S3 buckets.
+
+### 'Raw' AWS
 
 Rougly, there are two methods for an application to access a protected ressources on AWS:
 
@@ -33,7 +33,7 @@ These metadatas are accessed using a specific URL: `http://169.254.169.254/lates
 
 In a K8s context, this means only POD bound to 'hostNetwork' will be able to access such metadata. This is not the case for regular application PODs.
 
-The solution then will be to proxify such metadata request. Fortunately, there is at least to [open sources projects performing this](https://www.kloia.com/blog/aws-resource-access-with-iam-role-from-kubernetes). Also, these proxy will allow to implements some access control on the role which can be used, based on the namespace.
+The solution then will be to proxify such metadata request. Fortunately, there is at least two [open sources projects performing this](https://www.kloia.com/blog/aws-resource-access-with-iam-role-from-kubernetes). Also, these proxy will allow to implement some access control on the role which can be used, based on the namespace.
 
 ## Experimentation
 
@@ -86,7 +86,7 @@ role_arn = arn:aws:iam::213739745859:role/single1_gha2
 credential_source = Ec2InstanceMetadata
 ```
 
-Then one can check using gha1 profile, access is granted to gha-primary-1. But not to gha2-primary-1 nor gha-common-1. (This node attached role single1_instance has been fully replaced by the selected one).
+Then one can check using `gha1` profile, access is granted to `gha-primary-1`. But not to `gha2-primary-1` nor `gha-common-1`. (This node attached role `single1_instance` has been fully replaced by the assumed one).
 
 ```
 $ aws s3 ls --profile gha1 s3://gha1-primary-1
@@ -109,7 +109,7 @@ For this, we will use a small python test program: https://github.com/SergeAlexa
 
 See the associated README.md
 
-Also, there is [gha2s3](https://github.com/gha2/gha2s3), which is a rewrite of gha2minio, using AWS boto3 API instead of minio SDK, and aimed to transfer github archive to minio or AWS S3
+Also, there is [`gha2s3`](https://github.com/gha2/gha2s3), which is a rewrite of `gha2minio`, using AWS boto3 API instead of minio SDK, and aimed to transfer github archive to minio or AWS S3
 
 ### Next step 
 
