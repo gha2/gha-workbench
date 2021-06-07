@@ -134,6 +134,4 @@ https://medium.com/swlh/presto-with-kubernetes-and-s3-deployment-4e262849244a
 
 https://spark.apache.org/docs/latest/cloud-integration.html#authenticating
 
-# TODO
 
-- Mettre des retours au README dans toutes les pages de la doc
