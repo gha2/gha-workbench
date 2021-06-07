@@ -9,6 +9,7 @@
 - [Creation des espaces utilisateurs](docs/creation_espace_utilisateur.md)
 - [Utilisation directe](docs/utilisation_directe.md)
 - [Utlisation au travers de l'opérateur Spark](docs/utilisation_spark_operator.md)
+- [Deployment sur AWS (En cours)](docs/aws.md) 
 - [Ensuite...](docs/ensuite.md)
 
 ## Overview
