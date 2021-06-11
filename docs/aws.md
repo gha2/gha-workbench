@@ -78,15 +78,17 @@ For the AWS CLI, this can be archived by defining some profiles in the `~/.aws/c
 
 ```
 [profile gha1]
-role_arn = arn:aws:iam::213739745859:role/single1_gha1
+role_arn = arn:aws:iam::<myAccountId>:role/single1_gha1
 credential_source = Ec2InstanceMetadata
 
 [profile gha2]
-role_arn = arn:aws:iam::213739745859:role/single1_gha2
+role_arn = arn:aws:iam::<myAccountId>:role/single1_gha2
 credential_source = Ec2InstanceMetadata
 ```
 
-Then one can check using `gha1` profile, access is granted to `gha-primary-1`. But not to `gha2-primary-1` nor `gha-common-1`. (This node attached role `single1_instance` has been fully replaced by the assumed one).
+Where `<myAccountId>` is your AWS account ID (12 numbers)
+
+Then one can check using `gha1` profile that access is granted to `gha-primary-1`. But not to `gha2-primary-1` nor `gha-common-1`. (The attached role `single1_instance` has been fully superseded by the assumed one).
 
 ```
 $ aws s3 ls --profile gha1 s3://gha1-primary-1
@@ -111,12 +113,20 @@ See the associated README.md
 
 Also, there is [`gha2s3`](https://github.com/gha2/gha2s3), which is a rewrite of `gha2minio`, using AWS boto3 API instead of minio SDK, and aimed to transfer github archive to minio or AWS S3
 
+### Spark tests
+
+The next step is to  experiment this security model using Spark running in client mode in a VM on AWS.
+
+The Java spark application 'gha2spark' has been improved to handle assume role switching.
+
+The key point on this is the [spark-defaults.conf](https://github.com/SergeAlexandre/go2s3/blob/master/spark/spark-3.1.1/conf/spark-defaults.conf) configuration file.
+
 ### Next step 
 
-- Deploy these tests on AWS CAGIP labs. (Currently, they are deployed in a personal AWS account.)
-- Test Instance role and assume role for Spark application.
 - Replace `gha2minio` by `gha2s3` in the current (non AWS) POC implementation.
-- Make all this working in a Kubernetes context.  
+- Update and validate new `gha2spark` in the current (non AWS) POC implementation.
+- Make all this working in a Kubernetes context.
+- Works on long running jobs, as session of assume role is granted for only one hour.
 
 ## Application deployment
 
