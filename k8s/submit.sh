@@ -68,7 +68,7 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.executor.memory=8G \
 --conf spark.eventLog.enabled=true \
 --conf spark.eventLog.dir=s3a://spark/eventlogs \
-file://$GHA2SPARK/build/libs/gha2spark-0.1.0-uber.jar --appName ${APP_NAME} "$@"
+file://$GHA2SPARK/build/libs/gha2spark-0.1.1-uber.jar --appName ${APP_NAME} "$@"
 
 #local:////opt/spark/examples/jars/spark-examples_2.12-3.1.1.jar
 
