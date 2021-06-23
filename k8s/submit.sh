@@ -55,7 +55,7 @@ cd $BASEDIR/spark-3.1.1 && ./bin/spark-submit --verbose --master k8s://$SERVER \
 --conf spark.hadoop.fs.s3a.access.key=minio \
 --conf spark.hadoop.fs.s3a.secret.key=minio123 \
 --conf spark.hadoop.fs.s3a.path.style.access=true \
---conf spark.executor.instances=5 \
+--conf spark.executor.instances=4 \
 --conf spark.kubernetes.authenticate.driver.serviceAccountName=${SERVICE_ACCOUNT} \
 --conf spark.kubernetes.namespace=${NAMESPACE} \
 --conf spark.kubernetes.container.image=registry.gitlab.com/gha1/spark \

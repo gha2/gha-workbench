@@ -243,7 +243,7 @@ Pour cela, avec la commande `mc`, de `Minio` :
 ```
 mc mb minio1.shared1/spark
 touch _empty_
-mc cp empty  minio1.shared1/spark/eventlogs/empty
+mc cp _empty_  minio1.shared1/spark/eventlogs/empty
 rm _empty_
 ```
 

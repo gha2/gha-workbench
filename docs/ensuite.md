@@ -17,7 +17,7 @@
 - Presto  
 - [Securisation](http://spark.apache.org/docs/latest/security.html).
 - Test de résilience / chaos monkey
-- Remplacer spark hostiry server par [delight](https://github.com/datamechanics/delight)
+- Remplacer Spark History Server par [delight](https://github.com/datamechanics/delight)
 - Tester [data mechanics platform](https://www.datamechanics.co/)
 - Spark Streaming
 - Etude [ALLUXIO](https://www.alluxio.io/)  
