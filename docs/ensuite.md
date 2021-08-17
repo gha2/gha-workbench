@@ -11,7 +11,7 @@
 - Monitoring
 - Etude de l'utilisation du stockage (Shuffle/Spilling)
 - Node affinity
-- Gestion des droits S3
+- Gestion des droits S3 (Onpremise (Vault) and AWS)
 - Jupyter notebook
 - [Apache Livy](https://livy.incubator.apache.org/)
 - Presto  
@@ -21,12 +21,14 @@
 - Tester [data mechanics platform](https://www.datamechanics.co/)
 - Spark Streaming
 - Etude [ALLUXIO](https://www.alluxio.io/)  
+- Etude [dremio](https://www.dremio.com/) 
 - Etude [DeltaLake](https://delta.io/)
 - Etude [YuniKorn](http://yunikorn.apache.org/)
 - Access (beeline, JDBC, spark Thrift server)
 - [querybook](https://www.querybook.org/)
 - [Ozone](https://ozone.apache.org/)
 - Trouver un opérateur S3 pour gestion des buckets
+
 
 Done (To document)
 

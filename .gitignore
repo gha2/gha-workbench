@@ -12,3 +12,4 @@ spark-3.1.1/*
 !spark-3.1.1/kubernetes/dockerfiles/spark/log4j.properties
 
 
+/.DS_Store
